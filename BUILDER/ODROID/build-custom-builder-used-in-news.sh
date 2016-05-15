@@ -66,6 +66,23 @@ function sync_to() {
     rsync -a --delete ${R}/ ${TARGET}/
 }
 
+# Base debootstrap
+function bootstrap() {
+    # Required tools
+    apt-get -y install binfmt-support debootstrap f2fs-tools qemu-user-static rsync ubuntu-keyring wget whois
+    update-binfmts --enable qemu-${DEVICE_ARCH}
+
+    # Use the same base system for all flavours.
+    if [ ! -f "${R}/tmp/.bootstrap" ]; then
+        if [ "${ARCH}" == "${DEVICE_ARCH}" ]; then
+            debootstrap --variant=minbase --verbose $RELEASE $R http://ports.ubuntu.com/
+        else
+            qemu-debootstrap --variant=minbase --verbose --arch=arm64 $RELEASE $R http://ports.ubuntu.com/
+        fi
+        touch "$R/tmp/.bootstrap"
+    fi
+}
+
 function generate_locale() {
     # Setup default locale
     cat <<EOM >$R/etc/default/locale
@@ -121,9 +138,46 @@ function apt_update_only() {
     chroot $R apt-get update
 }
 
+function apt_update_upgrade() {
+    chroot $R apt-get update
+    chroot $R apt-get upgrade
+}
+
+function apt_upgrade() {
+    chroot $R apt-get update
+    chroot $R apt-get -y -u dist-upgrade
+}
+
 function apt_clean() {
     chroot $R apt-get -y autoremove
     chroot $R apt-get clean
+}
+
+# Install Ubuntu Tiny
+function ubunty_tiny() {
+    # Basic Packages
+    chroot $R apt-get -y install language-pack-en-base f2fs-tools software-properties-common u-boot-tools isc-dhcp-client udev netbase ifupdown iproute iputils-ping wget net-tools wpasupplicant ntpdate ntp less tzdata console-common nano console-data
+    # Config timezone, Keyboard, Console
+    chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
+    # chroot $R dpkg-reconfigure --frontend=noninteractive keyboard-configuration
+    # chroot $R dpkg-reconfigure --frontend=noninteractive console-setup
+}
+
+# Install Ubuntu minimal
+function ubuntu_minimal() {
+    chroot $R apt-get -y install f2fs-tools software-properties-common
+    if [ ! -f "${R}/tmp/.minimal" ]; then
+        chroot $R apt-get -y install ubuntu-minimal
+        touch "${R}/tmp/.minimal"
+    fi
+}
+
+# Install Ubuntu minimal
+function ubuntu_standard() {
+    if [ "${FLAVOUR}" != "ubuntu-minimal" ] && [ ! -f "${R}/tmp/.standard" ]; then
+        chroot $R apt-get -y install ubuntu-standard
+        touch "${R}/tmp/.standard"
+    fi
 }
 
 function create_groups() {
@@ -143,7 +197,7 @@ function create_groups() {
 #   adduser.local USER UID GID HOME
 
 # Add user to the Raspberry Pi specific groups
-usermod -a -G adm,input $1
+usermod -a -G adm,input,video $1
 EOM
     chmod +x $R/usr/local/sbin/adduser.local
 }
@@ -238,80 +292,53 @@ EOM
     fi
 }
 
-function setup_developer_package() {
-    chroot $R apt-get -y install sudo whois
+function add_scripts() {
+    if [ "${FLAVOUR}" == "ubuntu-mate" ]; then
+        cat <<'EOF' >$R/usr/local/bin/graphical
+#!/usr/bin/env bash
+# Call with either enable or disable as first parameter
+
+if [ $(id -u) -ne 0 ]; then
+    echo "ERROR! $(basename $) must be run as 'root'."
+    exit 1
+fi
+
+if [ "$1" == "enable" ]; then
+    systemctl set-default graphical.target
+elif [ "$1" == "disable" ]; then
+    systemctl set-default multi-user.target
+else
+    echo "$(basename $0) should be invoked with with either 'enable' or 'disable' as first parameter."
+fi
+EOF
+        chmod +x $R/usr/local/bin/graphical
+    fi
 }
 
-function setup_kernel() {
+function configure_minimal_hardware() {
     local FS="${1}"
     if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
         echo "ERROR! Unsupport filesystem requested. Exitting."
         exit 1
     fi
 
-    # gdebi-core used for installing copies-and-fills and omxplayer
-    chroot $R apt-get -y install gdebi-core
-    local COFI="http://archive.raspberrypi.org/debian/pool/main/r/raspi-copies-and-fills/raspi-copies-and-fills_0.5-1_armhf.deb"
-
-    # Install the RPi PPA
-    chroot $R apt-add-repository -y ppa:ubuntu-pi-flavour-makers/ppa
+    chroot $R apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys AB19BAC9
+    echo "deb http://deb.odroid.in/c2/ xenial main" >  $R/etc/apt/sources.list.d/odroid.list
     chroot $R apt-get update
+    
+    # install ODROID kernel
+    chroot $R apt-get install -y u-boot-tools initramfs-tools
 
-    # Firmware Kernel installation
-    chroot $R apt-get -y install raspberrypi-bootloader rpi-update
-    chroot $R rpi-update
+    # make the kernel package create a copy of the current kernel here
+    touch $R/boot/uImage
+    chroot $R apt-get install -y linux-image-c2 bootini
+}
 
-    # Hardware - Create a fake HW clock and add rng-tools
-    chroot $R apt-get -y install fake-hwclock rng-tools
-
-    # Load sound module on boot and enable HW random number generator
-    cat <<EOM >$R/etc/modules-load.d/rpi2.conf
-bcm2708_rng
-EOM
-
-    # Blacklist platform modules not applicable to the RPi2
-    cat <<EOM >$R/etc/modprobe.d/blacklist-rpi2.conf
-blacklist snd_bcm2835
-blacklist snd_soc_pcm512x_i2c
-blacklist snd_soc_pcm512x
-blacklist snd_soc_tas5713
-blacklist snd_soc_wm8804
-EOM
-
-    # Disable TLP
-    if [ -f $R/etc/default/tlp ]; then
-        sed -i s'/TLP_ENABLE=1/TLP_ENABLE=0/' $R/etc/default/tlp
-    fi
-
-    # udev rules
-    printf 'SUBSYSTEM=="input", GROUP="input", MODE="0660"\n' >> $R/etc/udev/rules.d/99-com.rules
-
-    # copies-and-fills
-    wget -c "${COFI}" -O $R/tmp/cofi.deb
-    chroot $R gdebi -n /tmp/cofi.deb
-
-    # Disabled cofi so it doesn't segfault when building via qemu-user-static
-    mv -v $R/etc/ld.so.preload $R/etc/ld.so.preload.disable
-
-    # Set up fstab
-    cat <<EOM >$R/etc/fstab
-proc            /proc           proc    defaults          0       0
-/dev/mmcblk0p2  /               ${FS}   defaults,noatime  0       1
-/dev/mmcblk0p1  /boot/          vfat    defaults          0       2
-EOM
-
-    # Set up firmware config
-    wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
-    if [ "${FLAVOUR}" == "ubuntu-minimal" ] || [ "${FLAVOUR}" == "ubuntu-standard" ]; then
-        echo "net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash" > $R/boot/cmdline.txt
-    else
-        echo "dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash" > $R/boot/cmdline.txt
-        sed -i 's/#framebuffer_depth=16/framebuffer_depth=32/' $R/boot/config.txt
-        sed -i 's/#framebuffer_ignore_alpha=0/framebuffer_ignore_alpha=1/' $R/boot/config.txt
-    fi
-
-    # Save the clock
-    chroot $R fake-hwclock save
+function install_docker() {
+    # install go
+    chroot $R apt-add-repository -y ppa:ubuntu-lxc/lxd-stable
+    chroot $R apt-get update
+    chroot $R apt-get -y install golang docker.io
 }
 
 function clean_up() {
@@ -355,19 +382,42 @@ function clean_up() {
     rm -rf $R/tmp/.standard || true
 }
 
-function unarchive_base_image() {
-    local BASE_IMAGE="${FLAVOUR}-${VERSION}${QUALITY}-armhf-base.tar.gz"
-    local TARGET="${1}"
-    if [ ! -d "${TARGET}" ]; then
-        mkdir -p "${TARGET}"
+function make_tarball() {
+    if [ ${MAKE_TARBALL} -eq 1 ]; then
+        rm -f "${BASEDIR}/${TARBALL}" || true
+        tar -cSf "${BASEDIR}/${TARBALL}" $R
     fi
-    tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET} .
 }
 
+function make_archive() {
+    tar -czf "${BASEDIR}/${BASE_IMAGE}" -C $R .
+}
 
-function single_stage_developer_rpi() {
+function single_stage_odroid() {
     R="${BASE_R}"
-    unarchive_base_image ${R}
+
+# --- We'll use ubuntu_tiny instead ---
+#    bootstrap
+#    mount_system
+
+#    generate_locale
+#    apt_sources
+#    apt_upgrade
+#    ubuntu_minimal
+#    ubuntu_standard
+#    apt_clean
+# -------------------------------------
+
+    bootstrap
+    mount_system
+
+    generate_locale
+    apt_sources
+    apt_update_only
+    ubunty_tiny
+    apt_clean
+
+    umount_system
     sync_to "${DEVICE_R}"
     R="${DEVICE_R}"
     mount_system
@@ -377,13 +427,29 @@ function single_stage_developer_rpi() {
     prepare_oem_config
     configure_ssh
     configure_network
-    setup_developer_package
-    setup_kernel ${FS_TYPE}
+    add_scripts
+
+#    apt_upgrade
+#    apt_clean
+
+#    umount_system
+#    clean_up
+#    sync_to ${DEVICE_R}
+#    make_tarball
+#    R=${DEVICE_R}
+#    mount_system
+
+    configure_minimal_hardware ${FS_TYPE}
+#    configure_hardware ${FS_TYPE}
+#    install_software
+#    install_docker
+#    apt_upgrade
+
     apt_clean
     clean_up
 
     umount_system
+#    make_raspi2_image ${FS_TYPE} ${FS_SIZE}
 }
 
-single_stage_developer_rpi
-
+single_stage_odroid
