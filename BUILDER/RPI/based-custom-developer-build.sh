@@ -365,7 +365,7 @@ function unarchive_base_image() {
 }
 
 
-function single_stage_odroid() {
+function single_stage_developer_rpi() {
     R="${BASE_R}"
     unarchive_base_image ${R}
     sync_to "${DEVICE_R}"
@@ -385,5 +385,5 @@ function single_stage_odroid() {
     umount_system
 }
 
-single_stage_odroid
+single_stage_developer_rpi
 
