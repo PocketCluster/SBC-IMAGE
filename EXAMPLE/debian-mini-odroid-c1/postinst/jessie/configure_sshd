@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -e
+
+# Enable root login using passwords
+sed -i "s/PermitRootLogin without-password/PermitRootLogin yes/g" /etc/ssh/sshd_config

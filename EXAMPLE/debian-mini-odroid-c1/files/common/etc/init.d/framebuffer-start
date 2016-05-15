@@ -1,0 +1,27 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          framebuffer-start
+# Required-Start:    mountkernfs
+# Required-Stop:
+# Default-Start:     S
+# Default-Stop:
+# Short-Description: Initializes console output over HDMI
+### END INIT INFO
+
+. /lib/init/vars.sh
+. /lib/lsb/init-functions
+
+case "$1" in
+    start)
+    log_action_begin_msg "Enable console output over HDMI"
+    if [ -e /sys/devices/platform/mesonfb/graphics/fb1/blank ]; then
+        echo "0" > /sys/devices/platform/mesonfb/graphics/fb1/blank
+    fi
+    log_action_end_msg 0
+    ;;
+
+    *)
+    echo "Usage: /etc/init.d/$0 start"
+    exit 1
+
+esac

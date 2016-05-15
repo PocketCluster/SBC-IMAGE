@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+
+#
+# NOTE: This script is run within the chroot after second stage debootstrap!
+#
+
+set -e
+
+if [ "$#" -ne 5 ]; then
+	echo "Usage: $0 DIST DIST_URL KERNEL_VERSION ODROID ROOT_RW"
+	exit 1
+fi
+
+DIST=$1
+DIST_URL=$2
+KERNEL_VERSION=$3
+ODROID=$4
+ROOT_RW=$5
+
+echo "Running postinstall script..."
+
+# Set root password
+echo "root:odroid" | chpasswd
+
+# Set the locale
+sed -i "s/^#[[:space:]]*en_US\.UTF-8\(.*\)/en_US\.UTF-8\1/g" /etc/locale.gen
+locale-gen
+
+# Set timezone
+dpkg-reconfigure -f noninteractive tzdata
+
+# Initialize /etc/apt/sources.list
+echo "deb $DIST_URL $DIST main contrib non-free" > /etc/apt/sources.list
+echo "deb-src $DIST_URL $DIST main contrib non-free" >> /etc/apt/sources.list
+
+# Update apt
+apt-get update
+
+# Generate the initial ramfs
+update-initramfs -c -t -k $KERNEL_VERSION
+
+insserv usbmount-start
+insserv framebuffer-start
+insserv hostname-init
+insserv sshd-init
+
+# Prevent apt-get from starting services
+echo "#!/bin/sh
+exit 101
+" > /usr/sbin/policy-rc.d
+chmod +x /usr/sbin/policy-rc.d
+
+# Run custom install scripts
+if [ -d /postinst ]; then
+	find /postinst -maxdepth 1 -type f -executable -not -name "*~" -exec {} "$DIST" "$ODROID" "$ROOT_RW" \;
+fi
+
+# Run custom install scripts for a specific distribution
+if [ -d /postinst/$DIST ]; then
+	find /postinst/$DIST -maxdepth 1 -type f -executable -not -name "*~" -exec {} "$DIST" "$ODROID" "$ROOT_RW" \;
+fi
+
+# Re-enable services to start
+rm /usr/sbin/policy-rc.d
+
+# Cleanup
+apt-get clean
+rm -rf /var/log/*

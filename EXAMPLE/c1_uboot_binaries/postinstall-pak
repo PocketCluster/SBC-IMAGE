@@ -1,0 +1,8 @@
+#!/bin/bash
+#
+# (C) Copyright 2014 Hardkernel Co,.Ltd
+#
+
+echo "A new u-boot is available."
+echo "Please run: cd /usr/share/c1_uboot && sudo ./sd_fusing.sh /dev/mmcblk0"
+echo "To update it."
