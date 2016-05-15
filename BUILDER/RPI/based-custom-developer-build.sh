@@ -259,18 +259,19 @@ function setup_kernel() {
 
     # Firmware Kernel installation
     chroot $R apt-get -y install raspberrypi-bootloader rpi-update
-    chroot $R rpi-update
+    chroot $R ROOT_PATH="${R}/" BOOT_PATH="${R}/boot/firmware" rpi-update 6d158adcc0cfa03afa17665715706e6e5f0750d2
 
     # Hardware - Create a fake HW clock and add rng-tools
     chroot $R apt-get -y install fake-hwclock rng-tools
 
+    # 2016-05-15 We do not need this. Rather, stable kernel is more necessary.
     # Load sound module on boot and enable HW random number generator
-    cat <<EOM >$R/etc/modules-load.d/rpi2.conf
-bcm2708_rng
-EOM
+#    cat <<EOM >$R/etc/modules-load.d/rpi2.conf
+#bcm2708_rng
+#EOM
 
     # Blacklist platform modules not applicable to the RPi2
-    cat <<EOM >$R/etc/modprobe.d/blacklist-rpi2.conf
+    cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
 blacklist snd_bcm2835
 blacklist snd_soc_pcm512x_i2c
 blacklist snd_soc_pcm512x
@@ -313,6 +314,77 @@ EOM
     # Save the clock
     chroot $R fake-hwclock save
 }
+
+
+function setup_alternative_kernel() {
+    local FS="${1}"
+    if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
+        echo "ERROR! Unsupport filesystem requested. Exitting."
+        exit 1
+    fi
+
+    # Install the RPi PPA
+    chroot $R apt-add-repository -y ppa:ubuntu-raspi2/ppa-rpi3
+    chroot $R apt-get update
+
+    # Firmware Kernel installation
+    chroot $R apt-get -y install u-boot-rpi linux-raspi2 linux-firmware-raspi2 linux-firmware flash-kernel
+
+    # gdebi-core used for installing copies-and-fills and omxplayer
+    chroot $R apt-get -y install gdebi-core
+    local COFI="http://archive.raspberrypi.org/debian/pool/main/r/raspi-copies-and-fills/raspi-copies-and-fills_0.5-1_armhf.deb"
+
+    # Install the RPI2 DT-compatible u-boot image.
+    wget -O $R/tmp/mkknlimg https://raw.githubusercontent.com/raspberrypi/tools/master/mkimage/mkknlimg
+    chmod 0755 $R/tmp/mkknlimg 
+    $R/tmp/mkknlimg --dtok $R/usr/lib/u-boot/rpi_2/u-boot.bin $R/boot/firmware/uboot.bin
+
+    # Blacklist platform modules not applicable to the RPI
+    cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
+blacklist snd_bcm2835
+blacklist snd_soc_pcm512x_i2c
+blacklist snd_soc_pcm512x
+blacklist snd_soc_tas5713
+blacklist snd_soc_wm8804
+EOM
+
+    # Disable TLP
+    if [ -f $R/etc/default/tlp ]; then
+        sed -i s'/TLP_ENABLE=1/TLP_ENABLE=0/' $R/etc/default/tlp
+    fi
+
+    # udev rules
+    printf 'SUBSYSTEM=="input", GROUP="input", MODE="0660"\n' >> $R/etc/udev/rules.d/99-com.rules
+
+    # copies-and-fills
+    wget -c "${COFI}" -O $R/tmp/cofi.deb
+    chroot $R gdebi -n /tmp/cofi.deb
+
+    # Disabled cofi so it doesn't segfault when building via qemu-user-static
+    mv -v $R/etc/ld.so.preload $R/etc/ld.so.preload.disable
+
+    # Set up fstab
+    cat <<EOM >$R/etc/fstab
+proc            /proc           proc    defaults          0       0
+/dev/mmcblk0p2  /               ${FS}   defaults,noatime  0       1
+/dev/mmcblk0p1  /boot/          vfat    defaults          0       2
+EOM
+
+    # BOOT config
+    cat <<EOM >$R/boot/firmware/config.txt
+kernel=uboot.bin
+EOM
+
+    # Set up firmware config
+    cat <<EOM >$R/boot/firmware/cmdline.txt
+net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash
+EOM
+
+    # update bootloader
+    chroot $R update-initramfs -u
+    chroot $R flash-kernel
+}
+
 
 function clean_up() {
     rm -f $R/etc/apt/*.save || true
@@ -364,7 +436,6 @@ function unarchive_base_image() {
     tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET} .
 }
 
-
 function single_stage_developer_rpi() {
     R="${BASE_R}"
     unarchive_base_image ${R}
@@ -378,7 +449,8 @@ function single_stage_developer_rpi() {
     configure_ssh
     configure_network
     setup_developer_package
-    setup_kernel ${FS_TYPE}
+#    setup_kernel ${FS_TYPE}
+    setup_alternative_kernel ${FS_TYPE}
     apt_clean
     clean_up
 
