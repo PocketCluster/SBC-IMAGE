@@ -1,6 +1,6 @@
 # Single Board Computer Image Builder
 
-### Ripping Odroid C2 Bootloader  
+### Ripping Odroid-C2 Bootloader  
 
 ```sh
 
@@ -21,3 +21,18 @@ Device         Boot  Start      End  Sectors  Size Id Type
 dd if=/dev/mmcblk0 of=./bootloader.img bs=512 count=264192
 ```
 
+### Ripping Pine-64 Bootloader
+
+```sh
+$ fdisk -l
+
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0xdce985d5
+
+Device         Boot  Start      End  Sectors  Size Id Type
+/dev/mmcblk0p1       40960   143359   102400   50M  c W95 FAT32 (LBA)
+/dev/mmcblk0p2      143360 15138815 14995456  7.2G 83 Linux
+```
