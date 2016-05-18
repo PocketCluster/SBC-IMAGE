@@ -59,11 +59,3 @@ Device         Boot  Start     End Sectors  Size Id Type
 # grep the begining of root partition
 $ dd if=/dev/mmcblk0 of=./bootloader.img bs=512 count=133120
 ```
-### How to recover RPI3 boot disk (May 16, 2016)
-
-```sh
-# copy only the boot firmware sector. 
-# /dev/mmcblk0 : [DEVEL 2016-05-05] XENIAL
-# /dev/sda     : Old Ubuntu Image
-$ dd if=/dev/mmcblk0 of=/dev/sda bs=512 count=131072
-```
