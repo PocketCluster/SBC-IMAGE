@@ -78,6 +78,7 @@ Check `/usr/modprobe.d/` as well.
 > References
 
 [Kernel modules](https://wiki.archlinux.org/index.php/kernel_modules)
+
 - - -  
 **How to prevent systemd-modules-load.service load redundant modules**  
 
@@ -125,7 +126,25 @@ SUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*", ATTR{dev_id}=="0x0", ATTR{type}=
 [Predictable Network Interface Names](https://www.freedesktop.org/wiki/Software/systemd/PredictableNetworkInterfaceNames/)  
 [Something is renaming my eth0 and wlan0 interfaces](http://ubuntu-mate.community/t/something-is-renaming-my-eth0-and-wlan0-interfaces/2884/1)
 
-### (05/16/2016)
+- - - 
+
+**Device tree map loading for RPI**  
+Edit `/boot/firmware/config.txt` file.  
+
+```sh
+kernel=uboot.bin
+# RPI2
+device_tree=bcm2709-rpi-2-b.dtb
+# RPI3
+#device_tree=bcm2709-rpi-3-b.dtb
+dtparam=audio=off  
+```  
+
+
+
+
+### (05/16/2016)  
+
 **Check `systemctl` error message in detail**  
 
 1. Find the systemd services which fail to start.  
