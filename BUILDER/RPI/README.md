@@ -4,10 +4,6 @@
 
 Build setting such as distro, directory, version & etc.   
 
-### `build-armhf-base.sh`  
-
-Really basic `armhf` file tree builder.  
-
 ### `build-dist-filetree.sh`  
 
 Distribution file tree. Base `Xenial` image is in `/POCKET/UBUNTU-BUILDER/BUILDER`.  

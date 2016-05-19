@@ -302,7 +302,7 @@ function clean_up() {
 }
 
 function unarchive_base_image() {
-    local BASE_IMAGE="${FLAVOUR}-${VERSION}${QUALITY}-arm64-base.tar.gz"
+    local BASE_IMAGE="xenial-preinstalled-core-arm64.tar.gz"
     local TARGET="${1}"
     if [ ! -d "${TARGET}" ]; then
         mkdir -p "${TARGET}"

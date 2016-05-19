@@ -4,10 +4,6 @@
 
 Build setting such as distro, directory, version & etc.   
 
-### `build-arm64-base.sh`  
-
-Really basic `arm64` file tree builder.  
-
 ### `build-dist-filetree.sh`  
 
 Distribution file tree. Base `Xenial` image is in `/POCKET/UBUNTU-BUILDER/BUILDER`.  
