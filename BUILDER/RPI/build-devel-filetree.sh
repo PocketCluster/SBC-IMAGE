@@ -315,7 +315,7 @@ EOM
     chroot $R fake-hwclock save
 }
 
-
+# this is from Ubuntu Raspberry PI page. Does not work
 function setup_alternative_kernel() {
     local FS="${1}"
     if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
@@ -399,10 +399,7 @@ function setup_minimal_kernel() {
 
     # Firmware Kernel installation
     chroot $R apt-get -y install raspberrypi-bootloader rpi-update
-    #chroot $R export BOOT_PATH="${R}/boot/firmware"
-    #chroot $R export ROOT_PATH="${R}/"
-    #chroot $R mkdir -p ${BOOT_PATH}
-    chroot $R rpi-update 6d158adcc0cfa03afa17665715706e6e5f0750d2
+    chroot $R rpi-update
 
     # gdebi-core used for installing copies-and-fills and omxplayer
     chroot $R apt-get -y install gdebi-core

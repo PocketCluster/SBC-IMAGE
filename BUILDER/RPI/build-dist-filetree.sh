@@ -341,11 +341,6 @@ function configure_minimal_hardware() {
     # Hardware - Create a fake HW clock and add rng-tools
     chroot $R apt-get -y install fake-hwclock rng-tools
 
-    # Load sound module on boot and enable HW random number generator
-    cat <<EOM >$R/etc/modules-load.d/rpi2.conf
-bcm2708_rng
-EOM
-
     # Blacklist platform modules not applicable to the RPi2
     cat <<EOM >$R/etc/modprobe.d/blacklist-rpi2.conf
 blacklist snd_bcm2835
