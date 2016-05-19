@@ -1,11 +1,14 @@
 # Single Board Computer Image Builder
 
+## Build Process  
+
+Firstly `rsync` [BUILDER](/BUILDER) and `/POCKET/UBUNTU-BUILDER/BUILDER` for base files.  
+
 ## Ripping Bootloaders  
 
 ### Ripping Odroid-C2 Bootloader  
 
 ```sh
-
 $ fdisk -l
 
 Disk /dev/mmcblk0: 29.7 GiB, 31914983424 bytes, 62333952 sectors
@@ -73,5 +76,4 @@ $ dd if=/dev/mmcblk0 of=./bootloader.img bs=512 count=133120
 
 [`Ubuntu Core`](DOCUMENT/Ubuntu Core 16-04 (Xenial Xerus) Daily Build.pdf)  
 - <http://cdimage.ubuntu.com/ubuntu-core/xenial/>
-
 
