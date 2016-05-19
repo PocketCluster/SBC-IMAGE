@@ -2,6 +2,25 @@
 
 ### (05/19/2016) 
 
+**Get the list of files only from `.tar.gz`**
+
+Assuming none of the file names contain newlines:
+
+```sh
+tar -tf foo.tar | sed -e 's#.*/##' -e '\#.#!d'
+```
+Or 
+
+```sh
+tar -tzf xenial-base-arm64.tar.gz > xenial-base-arm64-filelist.txt
+```
+
+> References
+
+- <http://unix.stackexchange.com/questions/101272/tar-list-files-only>
+
+--- 
+
 **Update initramfs to the right version**
 When `update-initramfs` does not work properly (i.e. picking up a wrong version), check the following directory and make sure `initramfs-tools` is seeing the correct version.  
 
@@ -74,9 +93,11 @@ $ sudo depmod
 
 > References
 
-[Linux Kernel Modules - Load, Unload, Configure](http://edoceo.com/howto/kernel-modules)  
-[How to load a custom module at the boot time in Ubuntu?](http://stackoverflow.com/questions/4356224/how-to-load-a-custom-module-at-the-boot-time-in-ubuntu)  
+- [Linux Kernel Modules - Load, Unload, Configure](http://edoceo.com/howto/kernel-modules)  
+- [How to load a custom module at the boot time in Ubuntu?](http://stackoverflow.com/questions/4356224/how-to-load-a-custom-module-at-the-boot-time-in-ubuntu)  
+
 - - -  
+
 **How to prevent a linux kernel `module` to be loaded**  
 Add a target module to `/etc/modprobe.d/blacklist.conf`.  
 
@@ -87,7 +108,7 @@ Check `/usr/modprobe.d/` as well.
 
 > References
 
-[Kernel modules](https://wiki.archlinux.org/index.php/kernel_modules)
+- [Kernel modules](https://wiki.archlinux.org/index.php/kernel_modules)  
 
 - - -  
 **How to prevent systemd-modules-load.service load redundant modules**  
@@ -133,8 +154,8 @@ SUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*", ATTR{dev_id}=="0x0", ATTR{type}=
 
 > References
 
-[Predictable Network Interface Names](https://www.freedesktop.org/wiki/Software/systemd/PredictableNetworkInterfaceNames/)  
-<http://ubuntu-mate.community/t/something-is-renaming-my-eth0-and-wlan0-interfaces/2884/1>
+- [Predictable Network Interface Names](https://www.freedesktop.org/wiki/Software/systemd/PredictableNetworkInterfaceNames/)  
+- <http://ubuntu-mate.community/t/something-is-renaming-my-eth0-and-wlan0-interfaces/2884/1>
 
 - - - 
 
@@ -211,10 +232,12 @@ Aug 25 12:22:31 mypc systemd[1]: Started Load Kernel Modules.
 
 > References  
 
-[How do I figure out why systemctl service “systemd-modules-load” fails?](http://superuser.com/questions/997938/how-do-i-figure-out-why-systemctl-service-systemd-modules-load-fails)  
-[Investigating_systemd_errors](https://wiki.archlinux.org/index.php/systemd#Investigating_systemd_errors)  
-[Systemd](https://wiki.gentoo.org/wiki/Systemd)
+- [How do I figure out why systemctl service “systemd-modules-load” fails?](http://superuser.com/questions/997938/how-do-i-figure-out-why-systemctl-service-systemd-modules-load-fails)  
+- [Investigating_systemd_errors](https://wiki.archlinux.org/index.php/systemd#Investigating_systemd_errors)  
+- [Systemd](https://wiki.gentoo.org/wiki/Systemd)
+
 - - - 
+
 **How to recover RPI3 boot disk**
 
 ```sh

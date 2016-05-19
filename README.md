@@ -1,5 +1,7 @@
 # Single Board Computer Image Builder
 
+## Ripping Bootloaders  
+
 ### Ripping Odroid-C2 Bootloader  
 
 ```sh
@@ -59,3 +61,17 @@ Device         Boot  Start     End Sectors  Size Id Type
 # grep the begining of root partition
 $ dd if=/dev/mmcblk0 of=./bootloader.img bs=512 count=133120
 ```
+
+## Where to get base/core Ubuntu Daily build
+
+### Ubuntu Xenial Base (Dist Build)  
+
+[`Ubuntu Base`](DOCUMENT/Ubuntu Base 16-04 (Xenial Xerus) Daily Build.pdf)  
+- <http://cdimage.ubuntu.com/ubuntu-base/xenial/>
+
+### Ubuntu Xenial Core (Devel Build)
+
+[`Ubuntu Core`](DOCUMENT/Ubuntu Core 16-04 (Xenial Xerus) Daily Build.pdf)  
+- <http://cdimage.ubuntu.com/ubuntu-core/xenial/>
+
+
