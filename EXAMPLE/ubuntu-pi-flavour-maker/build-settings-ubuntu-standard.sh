@@ -21,8 +21,8 @@
 
 FLAVOUR="ubuntu-standard"
 FLAVOUR_NAME="Ubuntu"
-RELEASE="wily"
-VERSION="15.10.1"
+RELEASE="xenial"
+VERSION="16.04"
 QUALITY=""
 
 # Either 'ext4' or 'f2fs'
@@ -37,12 +37,12 @@ FS_SIZE=4
 MAKE_TARBALL=0
 
 TARBALL="${FLAVOUR}-${VERSION}${QUALITY}-server-armhf-rootfs.tar.bz2"
-IMAGE="${FLAVOUR}-${VERSION}${QUALITY}-server-armhf-raspberry-pi-2.img"
+IMAGE="${FLAVOUR}-${VERSION}${QUALITY}-server-armhf-raspberry-pi.img"
 BASEDIR=${HOME}/PiFlavourMaker/${RELEASE}
 BUILDDIR=${BASEDIR}/${FLAVOUR}
 BASE_R=${BASEDIR}/base
 DESKTOP_R=${BUILDDIR}/desktop
-DEVICE_R=${BUILDDIR}/pi2
+DEVICE_R=${BUILDDIR}/pi
 ARCH=$(uname -m)
 export TZ=UTC
 

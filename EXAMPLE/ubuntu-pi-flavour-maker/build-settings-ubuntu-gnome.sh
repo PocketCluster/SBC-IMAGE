@@ -19,8 +19,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 ########################################################################
 
-FLAVOUR="ubuntu-minimal"
-FLAVOUR_NAME="Ubuntu"
+FLAVOUR="ubuntu-gnome"
+FLAVOUR_NAME="Ubuntu GNOME"
 RELEASE="xenial"
 VERSION="16.04"
 QUALITY=""
@@ -34,10 +34,10 @@ FS_SIZE=4
 # Either 0 or 1.
 # - 0 don't make generic rootfs tarball
 # - 1 make a generic rootfs tarball
-MAKE_TARBALL=0
+MAKE_TARBALL=1
 
-TARBALL="${FLAVOUR}-${VERSION}${QUALITY}-server-armhf-rootfs.tar.bz2"
-IMAGE="${FLAVOUR}-${VERSION}${QUALITY}-server-armhf-raspberry-pi.img"
+TARBALL="${FLAVOUR}-${VERSION}${QUALITY}-desktop-armhf-rootfs.tar.bz2"
+IMAGE="${FLAVOUR}-${VERSION}${QUALITY}-desktop-armhf-raspberry-pi.img"
 BASEDIR=${HOME}/PiFlavourMaker/${RELEASE}
 BUILDDIR=${BASEDIR}/${FLAVOUR}
 BASE_R=${BASEDIR}/base
@@ -47,7 +47,7 @@ ARCH=$(uname -m)
 export TZ=UTC
 
 
-if [ "${FLAVOUR}" == "ubuntu-minimal" ] || [ "${FLAVOUR}" == "ubuntu-standard" ]; then
+if [ "${FLAVOUR}" == "ubuntu-minimal" ] || [ "${FLAVOUR}" == "ubuntu-standard" ] || [ "${FLAVOUR}" == "ubuntu-gnome" ]; then
     USERNAME="ubuntu"
     OEM_CONFIG=0
 else

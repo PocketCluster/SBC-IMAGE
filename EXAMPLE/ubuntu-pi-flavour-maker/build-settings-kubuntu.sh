@@ -19,8 +19,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 ########################################################################
 
-FLAVOUR="ubuntu-minimal"
-FLAVOUR_NAME="Ubuntu"
+FLAVOUR="kubuntu"
+FLAVOUR_NAME="Kubuntu"
 RELEASE="xenial"
 VERSION="16.04"
 QUALITY=""
@@ -36,8 +36,8 @@ FS_SIZE=4
 # - 1 make a generic rootfs tarball
 MAKE_TARBALL=0
 
-TARBALL="${FLAVOUR}-${VERSION}${QUALITY}-server-armhf-rootfs.tar.bz2"
-IMAGE="${FLAVOUR}-${VERSION}${QUALITY}-server-armhf-raspberry-pi.img"
+TARBALL="${FLAVOUR}-${VERSION}${QUALITY}-desktop-armhf-rootfs.tar.bz2"
+IMAGE="${FLAVOUR}-${VERSION}${QUALITY}-desktop-armhf-raspberry-pi.img"
 BASEDIR=${HOME}/PiFlavourMaker/${RELEASE}
 BUILDDIR=${BASEDIR}/${FLAVOUR}
 BASE_R=${BASEDIR}/base

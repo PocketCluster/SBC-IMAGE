@@ -34,34 +34,42 @@ if [ $(id -u) -ne 0 ]; then
 fi
 
 function make_hash() {
+    source ${HOME}/Roaming/Scripts/key
     local FILE="${1}"
     local HASH="${2}"
-    if [ -f ${FILE} ]; then
-        ${HASH}sum ${FILE} > ${FILE}.${HASH}
-        sed -i -r "s/ .*\/(.+)/  \1/g" ${FILE}.${HASH}
+    if [ ! -f ${FILE}.${HASH}.sign ]; then
+        if [ -f ${FILE} ]; then
+            ${HASH}sum ${FILE} > ${FILE}.${HASH}
+            sed -i -r "s/ .*\/(.+)/  \1/g" ${FILE}.${HASH}
+            gpg --default-key ${KEY} --armor --output ${FILE}.${HASH}.sign --detach-sig ${FILE}.${HASH}
+        else
+            echo "WARNING! Didn't find ${FILE} to hash."
+        fi
     else
-        echo "WARNING! Didn't find ${FILE} to hash."
+        echo "Existing signature found, skipping..."
     fi
 }
 
 function publish_image() {
     source ${HOME}/Roaming/Scripts/dest
-    local HASH=md5
+    local HASH=sha256
     if [ -n "${DEST}" ]; then
         echo "Sending to: ${DEST}"
         if [ ! -e "${BASEDIR}/${IMAGE}.xz" ]; then
             xz ${BASEDIR}/${IMAGE}
         fi
         make_hash "${BASEDIR}/${IMAGE}.xz" ${HASH}
+        ssh ${DEST} mkdir -p ~/ISO-Mirror/${RELEASE}/armhf/
         rsync -rvl -e 'ssh -c aes128-gcm@openssh.com' --progress "${BASEDIR}/${IMAGE}.xz" ${DEST}:ISO-Mirror/${RELEASE}/armhf/
         rsync -rvl -e 'ssh -c aes128-gcm@openssh.com' --progress "${BASEDIR}/${IMAGE}.xz.${HASH}" ${DEST}:ISO-Mirror/${RELEASE}/armhf/
+        rsync -rvl -e 'ssh -c aes128-gcm@openssh.com' --progress "${BASEDIR}/${IMAGE}.xz.${HASH}.sign" ${DEST}:ISO-Mirror/${RELEASE}/armhf/
     fi
 }
 
 function publish_tarball() {
     if [ ${MAKE_TARBALL} -eq 1 ]; then
         source ${HOME}/Roaming/Scripts/dest
-        local HASH=md5
+        local HASH=sha256
         if [ -n "${DEST}" ]; then
             if [ ! -e "${BASEDIR}/${TARBALL}" ]; then
                 echo "ERROR! Could not find ${TARBALL}. Exitting."
@@ -71,6 +79,7 @@ function publish_tarball() {
             echo "Sending to: ${DEST}"
             rsync -rvl -e 'ssh -c aes128-gcm@openssh.com' --progress "${BASEDIR}/${TARBALL}" ${DEST}:ISO-Mirror/${RELEASE}/armhf/
             rsync -rvl -e 'ssh -c aes128-gcm@openssh.com' --progress "${BASEDIR}/${TARBALL}.${HASH}" ${DEST}:ISO-Mirror/${RELEASE}/armhf/
+            rsync -rvl -e 'ssh -c aes128-gcm@openssh.com' --progress "${BASEDIR}/${TARBALL}.${HASH}.sign" ${DEST}:ISO-Mirror/${RELEASE}/armhf/
         fi
     fi
 }

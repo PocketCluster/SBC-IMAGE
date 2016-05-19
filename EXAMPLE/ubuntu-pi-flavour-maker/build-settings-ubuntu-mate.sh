@@ -21,15 +21,15 @@
 
 FLAVOUR="ubuntu-mate"
 FLAVOUR_NAME="Ubuntu MATE"
-RELEASE="wily"
-VERSION="15.10.1"
+RELEASE="xenial"
+VERSION="16.04"
 QUALITY=""
 
 # Either 'ext4' or 'f2fs'
 FS_TYPE="ext4"
 
 # Either 4, 8 or 16
-FS_SIZE=4
+FS_SIZE=8
 
 # Either 0 or 1.
 # - 0 don't make generic rootfs tarball
@@ -37,12 +37,12 @@ FS_SIZE=4
 MAKE_TARBALL=1
 
 TARBALL="${FLAVOUR}-${VERSION}${QUALITY}-desktop-armhf-rootfs.tar.bz2"
-IMAGE="${FLAVOUR}-${VERSION}${QUALITY}-desktop-armhf-raspberry-pi-2.img"
+IMAGE="${FLAVOUR}-${VERSION}${QUALITY}-desktop-armhf-raspberry-pi.img"
 BASEDIR=${HOME}/PiFlavourMaker/${RELEASE}
 BUILDDIR=${BASEDIR}/${FLAVOUR}
 BASE_R=${BASEDIR}/base
 DESKTOP_R=${BUILDDIR}/desktop
-DEVICE_R=${BUILDDIR}/pi2
+DEVICE_R=${BUILDDIR}/pi
 ARCH=$(uname -m)
 export TZ=UTC
 
