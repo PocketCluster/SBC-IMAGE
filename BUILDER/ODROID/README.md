@@ -10,7 +10,7 @@ Really basic `arm64` file tree builder.
 
 ### `build-dist-filetree.sh`  
 
-Distribution file tree. Base `Xenial` image is in `/POCKET/LINUX-BUILDER/XENIAL-IMAGE`.  
+Distribution file tree. Base `Xenial` image is in `/POCKET/UBUNTU-BUILDER/XENIAL-IMAGE`.  
 
 ### `build-devel-filetree.sh`  
 

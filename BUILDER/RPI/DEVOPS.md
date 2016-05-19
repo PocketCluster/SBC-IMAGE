@@ -1,5 +1,15 @@
 # DevOps
 
+### (05/19/2016) 
+
+**Update initramfs to the right version**
+When `update-initramfs` does not work properly (i.e. picking up a wrong version), check the following directory and make sure `initramfs-tools` is seeing the correct version.  
+
+```sh
+/var/lib/initramfs-tools
+```
+
+
 ### (05/17/2016)
 **Using ip addr instead of ifconfig reports “RTNETLINK answers: File exists” on Debian [link](http://unix.stackexchange.com/questions/100588/using-ip-addr-instead-of-ifconfig-reports-rtnetlink-answers-file-exists-on-de)**  
 
@@ -124,7 +134,7 @@ SUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*", ATTR{dev_id}=="0x0", ATTR{type}=
 > References
 
 [Predictable Network Interface Names](https://www.freedesktop.org/wiki/Software/systemd/PredictableNetworkInterfaceNames/)  
-[Something is renaming my eth0 and wlan0 interfaces](http://ubuntu-mate.community/t/something-is-renaming-my-eth0-and-wlan0-interfaces/2884/1)
+<http://ubuntu-mate.community/t/something-is-renaming-my-eth0-and-wlan0-interfaces/2884/1>
 
 - - - 
 
