@@ -269,7 +269,9 @@ function clean_up() {
 }
 
 function unarchive_base_image() {
-    local BASE_IMAGE="xenial-preinstalled-core-arm64.tar.gz"
+    # Need to figure out how to sync links
+    #local BASE_IMAGE="xenial-preinstalled-core-arm64.tar.gz"
+    local BASE_IMAGE="ubuntu-standard-16.04.1-arm64-base.tar.gz"
     local TARGET="${1}"
     if [ ! -d "${TARGET}" ]; then
         mkdir -p "${TARGET}"
