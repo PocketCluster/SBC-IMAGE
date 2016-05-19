@@ -35,48 +35,7 @@ if [ $(id -u) -ne 0 ]; then
     exit 1
 fi
 
-function clean_up() {
-    rm -f $R/etc/apt/*.save || true
-    rm -f $R/etc/apt/sources.list.d/*.save || true
-    rm -f $R/etc/resolvconf/resolv.conf.d/original
-    rm -f $R/run/*/*pid || true
-    rm -f $R/run/*pid || true
-    rm -f $R/run/cups/cups.sock || true
-    rm -f $R/run/uuidd/request || true
-    rm -f $R/etc/*-
-    rm -rf $R/tmp/*
-    rm -f $R/var/crash/*
-    rm -f $R/var/lib/urandom/random-seed
-
-    # Clean up old Raspberry Pi firmware and modules
-    rm -f $R/boot/.firmware_revision || true
-    rm -rf $R/boot.bak || true
-    rm -rf $R/lib/modules/4.1.7* || true
-    rm -rf $R/lib/modules.bak || true
-
-    # Potentially sensitive.
-    rm -f $R/root/.bash_history
-    rm -f $R/root/.ssh/known_hosts
-
-    # Machine-specific, so remove in case this system is going to be
-    # cloned.  These will be regenerated on the first boot.
-    rm -f $R/etc/udev/rules.d/70-persistent-cd.rules
-    rm -f $R/etc/udev/rules.d/70-persistent-net.rules
-    rm -f $R/etc/NetworkManager/system-connections/*
-    [ -L $R/var/lib/dbus/machine-id ] || rm -f $R/var/lib/dbus/machine-id
-    echo '' > $R/etc/machine-id
-
-    # Enable cofi
-    if [ -e $R/etc/ld.so.preload.disable ]; then
-        mv -v $R/etc/ld.so.preload.disable $R/etc/ld.so.preload
-    fi
-
-    rm -rf $R/tmp/.bootstrap || true
-    rm -rf $R/tmp/.minimal || true
-    rm -rf $R/tmp/.standard || true
-}
-
-function make_odroidc2_image() {
+function make_pine64_image() {
     # Build the image file
     local FS="${1}"
     local GB=${2}
@@ -113,19 +72,20 @@ function make_odroidc2_image() {
     sfdisk -f "$BASEDIR/${IMAGE}" <<EOM
 unit: sectors
 
-1 : start=     2048, size=   262144, Id= c, bootable
-2 : start=   264192, size=  ${SIZE}, Id=83
+1 : start=    40960, size=   102400, Id= c, bootable
+2 : start=   143360, size=  ${SIZE}, Id=83
 3 : start=        0, size=        0, Id= 0
 4 : start=        0, size=        0, Id= 0
 EOM
 
-    BOOT_LOOP="$(losetup -o $((2048 * 512)) --sizelimit $((262144 * 512)) -f --show ${BASEDIR}/${IMAGE})"
-    ROOT_LOOP="$(losetup -o $((264192 * 512)) -f --show ${BASEDIR}/${IMAGE})"
+    BOOT_LOOP="$(losetup -o $((40960 * 512)) --sizelimit $((102400 * 512)) -f --show ${BASEDIR}/${IMAGE})"
+    ROOT_LOOP="$(losetup -o $((143360 * 512)) -f --show ${BASEDIR}/${IMAGE})"
 
     # make filesystem
     mkfs.vfat -n PC_BOOT -S 512 -s 16 -v "${BOOT_LOOP}"
     if [ "${FS}" == "ext4" ]; then
-        mkfs.ext4 -O ^has_journal -b 4096 -L PC_ROOT -U e139ce78-9841-40fe-8823-96a304a09859 -m 0 "${ROOT_LOOP}" 
+        #mkfs.ext4 -O ^has_journal -b 4096 -L PC_ROOT -U e139ce78-9841-40fe-8823-96a304a09859 -m 0 "${ROOT_LOOP}" 
+        mkfs.ext4 -F -b 4096 -E stride=2,stripe-width=1024 -L rootfs "${ROOT_LOOP}"
     else
         mkfs.f2fs -l PC_ROOT -o 1 "${ROOT_LOOP}"
     fi
@@ -142,8 +102,8 @@ EOM
     losetup -d "${BOOT_LOOP}"
 
     # Copying the original bootloader
-    TOP_LOOP="$(losetup -o 0 --sizelimit $((264192 * 512)) -f --show ${BASEDIR}/${IMAGE})"
-    dd if=${PWD}/../BOOTLOADER-C2-3.14.29-56.img of=${TOP_LOOP} bs=512 count=264192
+    TOP_LOOP="$(losetup -o 0 --sizelimit $((143360 * 512)) -f --show ${BASEDIR}/${IMAGE})"
+    dd if=${PWD}/../BOOTLOADER-PINE64-3.10.65-7-LONGSLEEP.img of=${TOP_LOOP} bs=512 count=143360
     losetup -d "${TOP_LOOP}"
 }
 
@@ -155,4 +115,4 @@ function make_tarball() {
 }
 
 R=${DEVICE_R}
-make_odroidc2_image ${FS_TYPE} 0
+make_pine64_image ${FS_TYPE} 1

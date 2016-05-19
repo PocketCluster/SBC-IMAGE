@@ -179,6 +179,9 @@ EOM
 
     mkdir -p $R/etc/systemd/system/ssh.service.wants
     chroot $R ln -s /etc/systemd/system/sshdgenkeys.service /etc/systemd/system/ssh.service.wants
+
+    # this is a new way to enable ssh-keygen service. But, the two lines above never failed. so let's mute. 2016-05-19
+    #chroot $R systemctl enable ssh-keygen
 }
 
 function configure_network() {
@@ -275,14 +278,50 @@ function unarchive_base_image() {
     (tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET})
 }
 
+#------------------------------------------------PINE64--------------------------------------------
+function add_platform_scripts() {
+    # Install platform scripts
+    mkdir -p ${R}/usr/local/sbin
+    cp -av ${PWD}/PLATFORM-SCRIPTS/* $R/usr/local/sbin
+    chroot $R chown root.root /usr/local/sbin/*
+    chmod 755 ${R}/usr/local/sbin/*
+}
+
+function add_mackeeper_service() {
+    cat > "$R/etc/systemd/system/eth0-mackeeper.service" <<EOF
+[Unit]
+Description=Fix eth0 mac address to uEnv.txt
+After=systemd-modules-load.service local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pine64_eth0-mackeeper.sh
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    chroot $R systemctl enable eth0-mackeeper
+}
+
+function add_corekeeper_service() {
+    cat > "$R/etc/systemd/system/cpu-corekeeper.service" <<EOF
+[Unit]
+Description=CPU corekeeper
+[Service]
+ExecStart=/usr/local/sbin/pine64_corekeeper.sh
+[Install]
+WantedBy=multi-user.target
+EOF
+    chroot $R systemctl enable cpu-corekeeper
+}
 
 function setup_kernel() {
     local TEMPKERN=$(mktemp -d -p ${R}/tmp)
-    local KERNNAME="${PWD}/KERNEL-05-19-2016/linux-pine64-latest.tar.xz"
+    local KERNNAME=${PWD}/KERNEL/linux-pine64-3.10.65-7-pine64-longsleep-28.tar.xz
 
     echo "Extracting Kernel..."
     mkdir ${TEMPKERN}/update
-    tar -C ${TEMPKERN}/update --numeric-owner -xJf "${KERNNAME}"
+    tar -C ${TEMPKERN}/update --numeric-owner -xJf ${KERNNAME}
     cp -RLp ${TEMPKERN}/update/boot/* $R/boot/
     cp -RLp ${TEMPKERN}/update/lib/* $R/lib/ 2>/dev/null || true
     cp -RLp ${TEMPKERN}/update/usr/* $R/usr/
@@ -294,8 +333,15 @@ function setup_kernel() {
     fi
 
     rm -rf ${TEMPKERN}
-}
 
+    # Create fstab
+    cat <<EOF > "${R}/etc/fstab"
+# <file system> <dir>   <type>  <options>           <dump>  <pass>
+/dev/mmcblk0p1  /boot   vfat    defaults            0       2
+/dev/mmcblk0p2  /   ext4    defaults,noatime        0       1
+EOF
+}
+#--------------------------------------------------------------------------------------------------
 
 function single_stage_build() {
     R="${BASE_R}"
@@ -309,7 +355,13 @@ function single_stage_build() {
     create_user_pocket
     configure_ssh
     configure_network
+
+    #PINE64 specific scripts
+    add_platform_scripts
+    add_mackeeper_service
+    add_corekeeper_service
     setup_kernel
+
     apt_clean
     clean_up
 
@@ -317,4 +369,3 @@ function single_stage_build() {
 }
 
 single_stage_build
-
