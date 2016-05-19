@@ -271,7 +271,8 @@ function unarchive_base_image() {
     if [ ! -d "${TARGET}" ]; then
         mkdir -p "${TARGET}"
     fi
-    tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET} .
+    #tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET} .
+    (tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET})
 }
 
 
@@ -296,7 +297,7 @@ function setup_kernel() {
 }
 
 
-function setup_kernel() {
+function single_stage_build() {
     R="${BASE_R}"
     unarchive_base_image ${R}
     sync_to "${DEVICE_R}"
@@ -308,7 +309,7 @@ function setup_kernel() {
     create_user_pocket
     configure_ssh
     configure_network
-    setup_kernel_with
+    setup_kernel
     apt_clean
     clean_up
 

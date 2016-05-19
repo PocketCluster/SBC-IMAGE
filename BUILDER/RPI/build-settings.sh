@@ -38,7 +38,7 @@ MAKE_TARBALL=1
 
 TARBALL="${FLAVOUR}-${VERSION}${QUALITY}-server--armhf-rootfs.tar.bz2"
 IMAGE="${FLAVOUR}-${VERSION}${QUALITY}-server-armhf-raspberry.img"
-BASEDIR=${PWD}/PiFlavourMaker/${RELEASE}
+BASEDIR=${PWD}/RPI/${RELEASE}
 BUILDDIR=${BASEDIR}/${FLAVOUR}
 BASE_R=${BASEDIR}/base
 DESKTOP_R=${BUILDDIR}/desktop
