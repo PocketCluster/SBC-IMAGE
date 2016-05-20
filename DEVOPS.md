@@ -1,5 +1,56 @@
 # DevOps
 
+### (05/20/2016)  
+
+**Exclude multiple words with grep**
+
+```
+grep -v 'pattern1 | grep -v 'pattern2'
+```
+
+> Reference
+
+- [How to grep, excluding some patterns?](http://stackoverflow.com/questions/18468716/how-to-grep-excluding-some-patterns)  
+
+--- 
+
+**How to _recursively_ download all dependencies and packages to directory**
+
+```sh
+apt-get download $(apt-rdepends "package" |grep -v "^ ")
+```
+
+> Reference
+
+- [How to download all dependencies and packages to directory](http://stackoverflow.com/questions/13756800/how-to-download-all-dependencies-and-packages-to-directory)  
+
+---
+
+**`apt-get` install hitory**
+
+All actions with apt (apt-get) are logged. These files are available in /var/log/apt/. To view the most recent history log, execute:
+
+```sh
+less /var/log/apt/history.log
+```
+
+These logs gets rotated (every month I guess), old files will be suffixed with a number and compressed. So to view the next history log, use:
+
+```sh
+zless /var/log/apt/history.log.1.gz
+```
+
+To view the logs available:
+
+```sh
+ls -la /var/log/apt/
+```
+
+> Reference
+
+- [How do I show apt-get package management history via command line?](http://askubuntu.com/questions/21657/how-do-i-show-apt-get-package-management-history-via-command-line)  
+
+
 ### (05/19/2016) 
 
 **Get the list of files only from `.tar.gz`**
