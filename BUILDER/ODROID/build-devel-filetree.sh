@@ -260,6 +260,67 @@ function setup_kernel_with_bootini() {
     #(cd $R/boot/conf.d/system.default; ln -s ../../../media/boot/ ./kernel)
 }
 
+function setup_kernel_from_local() {
+    local LOCAL_DEB_REPO=${PWD}/KERNEL/
+
+    chroot $R apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys AB19BAC9
+    echo "deb http://deb.odroid.in/c2/ xenial main" >  $R/etc/apt/sources.list.d/odroid.list
+    chroot $R apt-get -q=2 update
+
+    chroot $R apt-get -q=2 -y install initramfs-tools
+    # <HK quirk>
+    echo "#!/bin/sh" > $R/etc/initramfs-tools/hooks/e2fsck.sh
+    echo ". /usr/share/initramfs-tools/hook-functions" >> $R/etc/initramfs-tools/hooks/e2fsck.sh
+    echo "copy_exec /sbin/e2fsck /sbin" >> $R/etc/initramfs-tools/hooks/e2fsck.sh
+    echo "copy_exec /sbin/fsck.ext4 /sbin" >> $R/etc/initramfs-tools/hooks/e2fsck.sh
+    chmod +x $R/etc/initramfs-tools/hooks/e2fsck.sh
+
+    # <Install scripts from bootini package >
+    mkdir -p $R/tmp/btini
+    chroot $R apt-get -q -y download bootini
+    mv $R/*deb $R/tmp
+    dpkg-deb -x $R/tmp/bootini*.deb $R/tmp/btini/
+    cp -r -v $R/tmp/btini/etc/* $R/etc
+    cp -r -v $R/tmp/btini/bin/* $R/bin
+    cp -r -v $R/tmp/btini/usr/* $R/usr
+    rm -rf $R/tmp/btini
+    rm -rf $R/tmp/*.deb
+
+    # </HK quirk>
+    mkdir -p $R/media/boot
+    #chroot $R apt-get -q=2 -y install linux-image-c2
+
+    # instead of easy 'linux-image-c2' we're to install from local repository
+    # TOOD: check if a package is installed first
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}debconf-2.0
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/zlib1g*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/tar*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/liblzma5*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libbz2-1.0*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/dpkg*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/perl-base*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/debconf*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libpcre3*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libselinux1*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/multiarch-support*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/gcc-6-base*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libgcc1*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libc6*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libattr1*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libacl1*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/coreutils*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/linux-image-3.14.29-56*
+    chroot $R dpkg -i ${LOCAL_DEB_REPO}/linux-image-c2*
+
+    # U-571
+    mkdir -p $R/boot/conf.d/system.default
+    cp -v ${PWD}/uEnv.txt $R/boot/conf.d/system.default/uEnv.txt
+    
+    # This part is re-done in rsync stage in image creation
+    #(cd $R/boot/conf.d/; ln -s ./system.default ./default)
+    #(cd $R/boot/conf.d/system.default; ln -s ../../../media/boot/ ./kernel)
+}
+
 function clean_up() {
     rm -f $R/etc/apt/*.save || true
     rm -f $R/etc/apt/sources.list.d/*.save || true
@@ -322,7 +383,8 @@ function single_stage_odroid() {
     create_user_pocket
     configure_ssh
     configure_network
-    setup_kernel_with_bootini
+    #setup_kernel_with_bootini
+    setup_kernel_from_local
     apt_clean
     clean_up
 

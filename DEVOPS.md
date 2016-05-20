@@ -2,6 +2,17 @@
 
 ### (05/20/2016)  
 
+**Inverse the output**
+Use tac to inverse output of anything
+
+```
+grep -v "^ " | tac
+```
+
+> Reference
+
+- [Check if a package is installed and then install it if it's not](http://stackoverflow.com/questions/1298066/check-if-a-package-is-installed-and-then-install-it-if-its-not)  
+
 **Exclude multiple words with grep**
 
 ```
