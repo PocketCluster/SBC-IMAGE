@@ -6,3 +6,4 @@
 4. [ ] find out how to store links with rsync.  
 5. [ ] remove unnecessary langauge files.  
 6. [ ] install proper SSL CA root certs.  
+7. [ ] remove `Unattended Upgrades Shutdown`.  
