@@ -1,5 +1,13 @@
 # DevOps
 
+### (05/21/2016)  
+
+**Download all dependent `.deb` packages**
+
+```sh
+apt-get source <package>
+```
+
 ### (05/20/2016)  
 
 **Inverse the output**

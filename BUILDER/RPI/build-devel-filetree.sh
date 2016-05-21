@@ -242,7 +242,7 @@ function setup_developer_package() {
     chroot $R apt-get -y install sudo whois
 }
 
-function setup_kernel() {
+function setup_kernel_from_remote() {
     local FS="${1}"
     if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
         echo "ERROR! Unsupport filesystem requested. Exitting."
@@ -447,6 +447,63 @@ net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p
 EOM
 }
 
+function setup_minimal_from_local() {
+    local FS="${1}"
+    if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
+        echo "ERROR! Unsupport filesystem requested. Exitting."
+        exit 1
+    fi
+    local LOCAL_DEB_REPO=${PWD}/KERNEL
+
+    # rpi-update dependency
+    chroot $R apt-get -y install binutils curl 
+
+    # Firmware Kernel installation
+    dpkg --root=${R} --install ${LOCAL_DEB_REPO}/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb
+    dpkg --root=${R} --install ${LOCAL_DEB_REPO}/rpi-update_20151118~xenial1.0_all.deb
+    chroot $R rpi-update
+
+    # Blacklist platform modules not applicable to the RPI
+    cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
+blacklist snd_bcm2835
+blacklist snd_soc_pcm512x_i2c
+blacklist snd_soc_pcm512x
+blacklist snd_soc_tas5713
+blacklist snd_soc_wm8804
+EOM
+
+    # Disable TLP
+    if [ -f $R/etc/default/tlp ]; then
+        sed -i s'/TLP_ENABLE=1/TLP_ENABLE=0/' $R/etc/default/tlp
+    fi
+
+    # udev rules
+    printf 'SUBSYSTEM=="input", GROUP="input", MODE="0660"\n' >> $R/etc/udev/rules.d/99-com.rules
+
+    # copies-and-fills
+    dpkg --root=${R} --install ${LOCAL_DEB_REPO}/raspi-copies-and-fills_0.5-1_armhf.deb
+
+    # Disabled cofi so it doesn't segfault when building via qemu-user-static
+    mv -v $R/etc/ld.so.preload $R/etc/ld.so.preload.disable
+
+    # Set up fstab
+    cat <<EOM >$R/etc/fstab
+proc            /proc           proc    defaults          0       0
+/dev/mmcblk0p2  /               ${FS}   defaults,noatime  0       1
+/dev/mmcblk0p1  /boot/          vfat    defaults          0       2
+EOM
+
+    # BOOT config : WARNING this is /boot/!
+    cat <<EOM >$R/boot/config.txt
+kernel=uboot.bin
+EOM
+
+    # Set up firmware config : WARNING this is /boot/!
+    cat <<EOM >$R/boot/cmdline.txt
+net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash
+EOM
+}
+
 function clean_up() {
     rm -f $R/etc/apt/*.save || true
     rm -f $R/etc/apt/sources.list.d/*.save || true
@@ -510,9 +567,10 @@ function single_stage_developer_rpi() {
     configure_ssh
     configure_network
     setup_developer_package
-#    setup_kernel ${FS_TYPE}
+#    setup_kernel_from_remote ${FS_TYPE}
 #    setup_alternative_kernel ${FS_TYPE}
-    setup_minimal_kernel ${FS_TYPE}
+#    setup_minimal_kernel ${FS_TYPE}
+    setup_minimal_from_local ${FS_TYPE}
     apt_clean
     clean_up
 
