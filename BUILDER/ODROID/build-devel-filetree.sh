@@ -261,11 +261,10 @@ function setup_kernel_with_bootini() {
 }
 
 function setup_kernel_from_local() {
-    local LOCAL_DEB_REPO=${PWD}/KERNEL/
-
-    chroot $R apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys AB19BAC9
-    echo "deb http://deb.odroid.in/c2/ xenial main" >  $R/etc/apt/sources.list.d/odroid.list
-    chroot $R apt-get -q=2 update
+    local LOCAL_DEB_REPO=${PWD}/KERNEL
+    local BTINI_TEMP=$(mktemp -d -p ${R}/tmp)
+    local BTINI_PKG=${BTINI_TEMP}/btini
+    mkdir -p ${BTINI_PKG}
 
     chroot $R apt-get -q=2 -y install initramfs-tools
     # <HK quirk>
@@ -276,15 +275,12 @@ function setup_kernel_from_local() {
     chmod +x $R/etc/initramfs-tools/hooks/e2fsck.sh
 
     # <Install scripts from bootini package >
-    mkdir -p $R/tmp/btini
-    chroot $R apt-get -q -y download bootini
-    mv $R/*deb $R/tmp
-    dpkg-deb -x $R/tmp/bootini*.deb $R/tmp/btini/
-    cp -r -v $R/tmp/btini/etc/* $R/etc
-    cp -r -v $R/tmp/btini/bin/* $R/bin
-    cp -r -v $R/tmp/btini/usr/* $R/usr
-    rm -rf $R/tmp/btini
-    rm -rf $R/tmp/*.deb
+    cp ${LOCAL_DEB_REPO}/bootini*.deb ${BTINI_TEMP}
+    dpkg-deb -x ${BTINI_TEMP}/bootini*.deb ${BTINI_PKG}
+    cp -r -v ${BTINI_PKG}/etc/* $R/etc
+    cp -r -v ${BTINI_PKG}/bin/* $R/bin
+    cp -r -v ${BTINI_PKG}/usr/* $R/usr
+    rm -rf ${BTINI_TEMP}
 
     # </HK quirk>
     mkdir -p $R/media/boot
@@ -293,24 +289,24 @@ function setup_kernel_from_local() {
     # instead of easy 'linux-image-c2' we're to install from local repository
     # TOOD: check if a package is installed first
     #chroot $R dpkg -i ${LOCAL_DEB_REPO}debconf-2.0
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/zlib1g*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/tar*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/liblzma5*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libbz2-1.0*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/dpkg*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/perl-base*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/debconf*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libpcre3*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libselinux1*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/multiarch-support*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/gcc-6-base*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libgcc1*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libc6*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libattr1*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/libacl1*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/coreutils*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/linux-image-3.14.29-56*
-    chroot $R dpkg -i ${LOCAL_DEB_REPO}/linux-image-c2*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/zlib1g*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/tar*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/liblzma5*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/libbz2-1.0*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/dpkg*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/perl-base*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/debconf*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/libpcre3*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/libselinux1*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/multiarch-support*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/gcc-6-base*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/libgcc1*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/libc6*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/libattr1*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/libacl1*
+    #chroot $R dpkg -i ${LOCAL_DEB_REPO}/coreutils*
+    (cd ${LOCAL_DEB_REPO}; chroot $R dpkg --install ./linux-image-3.14.29-56*.deb)
+    (cd ${LOCAL_DEB_REPO}; chroot $R dpkg --install ./linux-image-c2*.deb)
 
     # U-571
     mkdir -p $R/boot/conf.d/system.default
@@ -392,4 +388,3 @@ function single_stage_odroid() {
 }
 
 single_stage_odroid
-
