@@ -7,3 +7,5 @@
 5. [ ] remove unnecessary langauge files.  
 6. [ ] install proper SSL CA root certs.  
 7. [ ] remove `Unattended Upgrades Shutdown`.  
+8. [ ] make RPI image dependencies local, especially `rpi-update`.  
+9. [ ] update Odroid `/etc/fstab` in image construction.  
