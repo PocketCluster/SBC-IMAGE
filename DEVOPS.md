@@ -2,6 +2,12 @@
 
 ### (05/21/2016)  
 
+**`dpkg` install in a certain directory**
+
+```sh
+dpkg --root=/mnt/partition1 -i mypackage.deb
+```
+
 **Download all dependent `.deb` packages**
 
 ```sh
