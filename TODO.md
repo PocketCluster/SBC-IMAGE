@@ -9,3 +9,4 @@
 7. [ ] remove `Unattended Upgrades Shutdown`.  
 8. [ ] make RPI image dependencies local, especially `rpi-update`.  
 9. [ ] update Odroid `/etc/fstab` in image construction.  
+10. [ ] setup swap space according to memory size. Can be easily done based on the model.  
