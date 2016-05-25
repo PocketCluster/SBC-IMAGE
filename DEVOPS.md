@@ -1,5 +1,26 @@
 # DevOps
 
+### (05/25/2016)  
+
+**Search `.deb` package with apt-cache**
+When you're curious about a package,
+
+```sh
+apt-cache search <package>
+```
+
+when you want to know more in detail,
+
+```sh
+apt-cache show <package>
+```
+
+> Reference
+
+- <http://newbiedoc.sourceforge.net/tutorials/apt-get-intro/index-apt-get-intro.html.en>  
+
+- - - 
+
 ### (05/23/2016)  
 
 **en_US.UTF-8 locale setup**  
