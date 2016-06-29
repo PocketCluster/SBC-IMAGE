@@ -1,5 +1,24 @@
 # DevOps
 
+### (06/29/2016)  
+
+** What's the function of `/etc/firstboot` file?**
+
+root will have a cron entry like this:
+
+```
+fbcheck:23456789:wait:/usr/sbin/fbcheck 2>&1 | alog -tboot > /dev/console # run /etc/firstboot
+```
+
+fbcheck is just a shell script which checks for the existence of /etc/firstboot and runs it if it exists.
+fbcheck renames /etc/firstboot so it only runs once - on the 'first' or 'next' reboot only.
+
+So, /etc/firstboot (if it exists) is a script to run at the next reboot only and is called by the fbcheck entry in /etc/inittab .
+
+> Reference
+
+- <http://www.tek-tips.com/viewthread.cfm?qid=927793>
+
 ### (05/25/2016)  
 
 **Install interdependent `.deb` packages altogether**  
