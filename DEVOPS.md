@@ -2,6 +2,38 @@
 
 ### (05/25/2016)  
 
+**Install interdependent `.deb` packages altogether**  
+When there are multiple packages interdependent each-other
+
+```sh
+dpkg -i --force-all <packages>
+```
+
+When one of the packages is in trouble, reconfigure it with the following to resolve.
+
+```sh
+dpkg-reconfigure <package>
+```
+
+You can also re-configure unconfigured packages with the following.
+
+> Here dpkg --configure -a will configure all unpacked but unconfigured packages. whereas dpkg-reconfigure -phigh -a will reconfigure all installed packages that use debconf with high priority.  
+
+```sh
+dpkg-reconfigure -phigh -a 
+```
+or
+
+```sh
+dpkg --configure -a
+```
+
+> References
+
+- [What is dpkg-reconfigure and how is it different from dpkg --configure?](http://askubuntu.com/questions/590898/what-is-dpkg-reconfigure-and-how-is-it-different-from-dpkg-configure)  
+
+- - - 
+
 **Search `.deb` package with apt-cache**
 When you're curious about a package,
 

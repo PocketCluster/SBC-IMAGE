@@ -1,0 +1,88 @@
+#!/bin/sh
+#
+# Automatically format and mount persistent storage
+#
+
+
+start() {
+  echo -n "Automounting: "
+  local magic="dhyve, please format-me"
+
+  if [ ! -b "/dev/vda1" -o ! -b "/dev/vda2" -o ! -b "/dev/vda3" ]; then
+    local header=$(dd if=/dev/vda bs=1 count=${#magic} 2>/dev/null)
+
+    if [ "$header" == "$magic" ]; then
+      dd if=/dev/vda of=/userdata.tar bs=1 count=4096 2>/dev/null
+      (echo n; echo p; echo 3; echo ;echo +1000M; echo t; echo 82;echo n; echo p; echo 2; echo ; echo +10M; echo n; echo p; echo 1;echo ;echo ;echo w) | fdisk /dev/vda
+
+      local timer=0
+      while [ "$timer" -lt 10 -a \(! -b "/dev/vda1" -o ! -b "/dev/vda2" -o ! -b "/dev/vda3" \)]; do
+        timer=$((timer + 1))
+        sleep 1
+      done
+
+      mkswap /dev/vda3
+      swapon /dev/vda3
+
+      mkfs.btrfs -m single /dev/vda1
+      mkfs.ext4 /dev/vda2
+    fi
+  fi
+
+  if [ -b "/dev/vda1" ]; then
+    mkdir -p /var/lib/docker
+    mount /dev/vda1 /var/lib/docker 2>/dev/null
+  fi
+
+  if [ -b "/dev/vda2" ]; then
+    mkdir -p /mnt/user
+    mount /dev/vda2 /mnt/user 2>/dev/null
+    mkdir -p /mnt/user/etc
+    mkdir -p /mnt/user/work/etc
+    mount -t overlay overlay -o lowerdir=/etc,upperdir=/mnt/user/etc,workdir=/mnt/user/work/etc /etc
+
+    mkdir -p /mnt/user/home
+    mkdir -p /mnt/user/work/home
+    mount -t overlay overlay -o lowerdir=/home/docker,upperdir=/mnt/user/home,workdir=/mnt/user/work/home /home/docker
+
+    if [ -e "/userdata.tar" ]; then
+      tar xf /userdata.tar -C /home/docker >/var/log/userdata.log 2>&1
+      chown -R docker:docker /home/docker
+      chmod 700 /home/docker/.ssh
+      chmod 600 /home/docker/.ssh/authorized_keys
+      rm -f '/home/docker/dhyve, please format-me'
+      rm -f /userdata.tar
+    fi
+  fi
+
+  if [ -b "/dev/vda3" ]; then
+    swapon /dev/vda3
+  fi
+
+  echo "OK"
+}
+
+stop() {
+  echo ""
+}
+
+restart() {
+  echo ""
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  restart|reload)
+    restart
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+esac
+
+exit $?
