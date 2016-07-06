@@ -1,8 +1,72 @@
 # DevOps
 
+### (07/06/2016)
+
+**How to fix a package from being updated**
+
+There are four ways of holding back packages: with dpkg, apt, aptitude or dselect.
+
+**dpkg**
+
+Put a package on hold:
+
+```sh
+echo "package hold" | sudo dpkg --set-selections
+```
+
+Remove the hold:
+
+```
+echo "package install" | sudo dpkg --set-selections
+```
+
+Display the status of your packages:
+
+```
+dpkg --get-selections
+```
+
+Display the status of a single package:
+
+```
+dpkg --get-selections | grep "package"
+```
+
+**apt**
+
+Hold a package:
+
+```
+sudo apt-mark hold package_name
+```
+
+Remove the hold:
+
+```
+sudo apt-mark unhold package_name
+```
+
+**aptitude**
+
+Hold a package:
+
+```
+sudo aptitude hold package_name
+```
+
+Remove the hold:
+
+```
+sudo aptitude unhold package_name
+```
+
+> Reference
+
+- <http://askubuntu.com/questions/18654/how-to-prevent-updating-of-a-specific-package>
+
 ### (06/29/2016)  
 
-** What's the function of `/etc/firstboot` file?**
+**What's the function of `/etc/firstboot` file?**
 
 root will have a cron entry like this:
 
