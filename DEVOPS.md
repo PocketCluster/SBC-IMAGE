@@ -1,5 +1,137 @@
 # DevOps
 
+
+### (11/23/2016)
+
+**How to partition swap space properly**
+
+1. Check disk status and write down the first sector of the 2nd partition. (Some kernel such as Pine64 mistakenly allow new partition to start from 2048. This is disaster. 
+
+  ```sh
+  fdisk -l  
+
+  Disk /dev/mmcblk0: 29.7 GiB, 31914983424 bytes, 62333952 sectors
+  Units: sectors of 1 * 512 = 512 bytes
+  Sector size (logical/physical): 512 bytes / 512 bytes
+  I/O size (minimum/optimal): 512 bytes / 512 bytes
+  Disklabel type: dos
+  Disk identifier: 0xdce985d5
+  
+  Device         Boot    Start      End  Sectors  Size Id Type
+  /dev/mmcblk0p1         40960   143359   102400   50M  c W95 FAT32 (LBA)
+  /dev/mmcblk0p2        143360 53945344 53801985 25.7G 83 Linux
+  ```
+
+2. Remove old partition and creat new one deduced by swap space. 
+  - Swap Space First Sector : MB size * 1024 * 1024 / 512 (e.g. 2048 * 1024 * 1024 / 512). Then Take out from the total disk sector.
+
+  ```sh
+  fdisk /dev/mmcblk0
+
+  Disk /dev/mmcblk0: 29.7 GiB, 31914983424 bytes, 62333952 sectors
+  Units: sectors of 1 * 512 = 512 bytes
+  Sector size (logical/physical): 512 bytes / 512 bytes
+  I/O size (minimum/optimal): 512 bytes / 512 bytes
+  Disklabel type: dos
+  Disk identifier: 0xdce985d5
+
+  Device         Boot    Start      End  Sectors  Size Id Type
+  /dev/mmcblk0p1         40960   143359   102400   50M  c W95 FAT32 (LBA)
+  /dev/mmcblk0p2        143360 53945344 53801985 25.7G 83 Linux  
+
+  Command (m for help): d
+  Partition number (1,2, default 2): 2
+  
+  Partition 2 has been deleted.
+  
+  Command (m for help): n
+  Partition type
+     p   primary (1 primary, 0 extended, 3 free)
+     e   extended (container for logical partitions)
+  Select (default p): p
+  Partition number (2-4, default 2):
+  First sector (2048-62333951, default 2048): 143360
+  Last sector, +sectors or +size{K,M,G,T,P} (143360-62333951, default 62333951): 53945344
+  
+  Created a new partition 2 of type 'Linux' and of size 25.7 GiB.
+  ```
+
+3. Create Swap Space and set types to swap space and save.
+
+  ```sh
+  Command (m for help): n
+  Partition type
+     p   primary (1 primary, 0 extended, 3 free)
+     e   extended (container for logical partitions)
+  Select (default p): p
+  Partition number (2-4, default 2):
+  First sector (2048-62333951, default 2048): 143360
+  Last sector, +sectors or +size{K,M,G,T,P} (143360-62333951, default 62333951): 53945344
+  
+  Command (m for help): p
+  
+  Disk /dev/mmcblk0: 29.7 GiB, 31914983424 bytes, 62333952 sectors
+  Units: sectors of 1 * 512 = 512 bytes
+  Sector size (logical/physical): 512 bytes / 512 bytes
+  I/O size (minimum/optimal): 512 bytes / 512 bytes
+  Disklabel type: dos
+  Disk identifier: 0xdce985d5
+  
+  Device         Boot    Start      End  Sectors  Size Id Type
+  /dev/mmcblk0p1         40960   143359   102400   50M  c W95 FAT32 (LBA)
+  /dev/mmcblk0p2        143360 53945344 53801985 25.7G 83 Linux
+  /dev/mmcblk0p3      53945345 62333951  8388607    4G 83 Linux
+  
+  Command (m for help): t
+  Partition number (1-3, default 3): 3
+  Partition type (type L to list all types): L
+  
+   1  FAT12           27  Hidden NTFS Win 82  Linux swap / So c1  DRDOS/sec (FAT-
+  
+  Partition type (type L to list all types): 82
+  Changed type of partition 'Linux' to 'Linux swap / Solaris'.
+  
+  Command (m for help): w
+  ```
+
+4. Resize 2nd partition
+
+  ```sh
+  resize2fs /dev/mmcblk0p2
+  ```
+
+5. Turn Swap Space on.
+
+  ```sh
+  # make swap space
+  mkswap /dev/mmcblk0p3
+
+  # turn swap space
+  swapon /dev/mmcblk0p3
+
+  # you can use UUID
+  blkid /dev/mmcblk0p3
+
+  vi /etc/fstab
+  # add the following line
+  /dev/mmcblk0p3  none    swap    sw                  0       0
+  ```
+
+6. Reboot and Check swap status
+
+  ```sh
+  cat /proc/meminfo
+  cat /proc/swaps
+  ```
+
+> References
+
+- <http://www.tldp.org/HOWTO/Partition/index.html>
+- <http://askubuntu.com/questions/33697/how-do-i-add-a-swap-partition-after-system-installation>
+- <https://www.linux.com/news/all-about-linux-swap-space>
+- <https://www.cyberciti.biz/faq/debian-ubuntu-reload-partition-table/>
+- <http://unix.stackexchange.com/questions/23072/how-can-i-check-if-swap-is-active-from-the-command-line>
+
 ### (07/06/2016)
 
 **How to fix a package from being updated**
