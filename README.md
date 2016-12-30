@@ -23,7 +23,15 @@ Device         Boot  Start      End  Sectors  Size Id Type
 /dev/mmcblk0p2      264192 62332928 62068737 29.6G 83 Linux
 
 # grep the begining of root partition
-$ dd if=/dev/mmcblk0 of=./bootloader.img bs=512 count=264192
+$ dd if=/dev/mmcblk0 of=./BOOTLOADER-C2-3.14.29-56.img bs=512 count=264192
+```
+
+**Recovering broken bootloader**
+
+<sup>*</sup>Be aware of restoring target. It is a **DEVICE**, not a partition.
+
+```sh
+$ dd if=./BOOTLOADER-C2-3.14.29-56.img if=/dev/<device_name> bs=512 count=264192
 ```
 
 ### Ripping Pine-64 Bootloader
@@ -42,7 +50,15 @@ Device         Boot  Start      End  Sectors  Size Id Type
 /dev/mmcblk0p2      143360 15138815 14995456  7.2G 83 Linux
 
 # grep the begining of root partition
-$ dd if=/dev/mmcblk0 of=./BOOTLOADER-PINE64.img bs=512 count=143360
+$ dd if=/dev/mmcblk0 of=./BOOTLOADER-PINE64-3.10.65-7-LONGSLEEP.img bs=512 count=143360
+```
+
+**Recovering broken bootloader**
+
+<sup>*</sup>Be aware of restoring target. It is a **DEVICE**, not a partition.
+
+```sh
+$ dd if=./BOOTLOADER-PINE64-3.10.65-7-LONGSLEEP.img if=/dev/<device_name> bs=512 count=143360
 ```
 
 ### Ripping RPI 2/3 Bootloader
@@ -62,7 +78,15 @@ Device         Boot  Start     End Sectors  Size Id Type
 /dev/mmcblk0p2      133120 1566719 1433600  700M 83 Linux
 
 # grep the begining of root partition
-$ dd if=/dev/mmcblk0 of=./bootloader.img bs=512 count=133120
+$ dd if=/dev/mmcblk0 of=./BOOTLOADER-RPI.img bs=512 count=133120
+```
+
+**Recovering broken bootloader**
+
+<sup>*</sup>Be aware of restoring target. It is a **DEVICE**, not a partition.
+
+```sh
+$ dd if=./BOOTLOADER-RPI.img if=/dev/<device_name> bs=512 count=133120
 ```
 
 ## Where to get base/core Ubuntu Daily build
