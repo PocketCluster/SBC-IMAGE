@@ -28,7 +28,7 @@ $ dd if=/dev/mmcblk0 of=./BOOTLOADER-C2-3.14.29-56.img bs=512 count=264192
 
 **Recovering broken bootloader**
 
-<sup>*</sup>Be aware of restoring target. It is a **DEVICE**, not a partition.
+<sup>*</sup> Be aware of restoring target. It is a __DEVICE__, not a partition.
 
 ```sh
 $ dd if=./BOOTLOADER-C2-3.14.29-56.img if=/dev/<device_name> bs=512 count=264192
@@ -55,7 +55,7 @@ $ dd if=/dev/mmcblk0 of=./BOOTLOADER-PINE64-3.10.65-7-LONGSLEEP.img bs=512 count
 
 **Recovering broken bootloader**
 
-<sup>*</sup>Be aware of restoring target. It is a **DEVICE**, not a partition.
+<sup>*</sup> Be aware of restoring target. It is a __DEVICE__, not a partition.
 
 ```sh
 $ dd if=./BOOTLOADER-PINE64-3.10.65-7-LONGSLEEP.img if=/dev/<device_name> bs=512 count=143360
@@ -83,7 +83,7 @@ $ dd if=/dev/mmcblk0 of=./BOOTLOADER-RPI.img bs=512 count=133120
 
 **Recovering broken bootloader**
 
-<sup>*</sup>Be aware of restoring target. It is a **DEVICE**, not a partition.
+<sup>*</sup> Be aware of restoring target. It is a __DEVICE__, not a partition.
 
 ```sh
 $ dd if=./BOOTLOADER-RPI.img if=/dev/<device_name> bs=512 count=133120
