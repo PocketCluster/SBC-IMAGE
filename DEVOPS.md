@@ -64,9 +64,9 @@
      p   primary (1 primary, 0 extended, 3 free)
      e   extended (container for logical partitions)
   Select (default p): p
-  Partition number (2-4, default 2):
-  First sector (2048-62333951, default 2048): 143360
-  Last sector, +sectors or +size{K,M,G,T,P} (143360-62333951, default 62333951): 53945344
+  Partition number (3-4, default 3): 3
+  First sector (2048-62333951, default 2048): 53945345
+  Last sector, +sectors or +size{K,M,G,T,P} (53945345-62333951, default 62333951): 62333951
   
   Command (m for help): p
   

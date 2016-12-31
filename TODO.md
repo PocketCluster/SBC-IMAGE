@@ -18,3 +18,4 @@
 11. [ ] setup auto partition/format/swap-setup from the first boot.  
   - Look how Hypriot has done in [`/etc/firstboot.d/10-resize-rootdisk`](./DOCUMENT/10-resize-rootdisk.sh)  
   - Look how dhyve-os has done in [`/etc/init.d/S3automount`](./DOCUMENT/S03automount.sh)
+12. [ ] `apt-mark hold u-boot-tools` so u-boot won't destroy bootloader.
