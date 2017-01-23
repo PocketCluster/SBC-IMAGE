@@ -1,5 +1,18 @@
 # Single Board Computer Image Builder
 
+## Ubuntu Image Repository
+
+- [ReleaseNotes](https://wiki.ubuntu.com/XenialXerus/ReleaseNotes) : Repository Index
+- [Ubuntu CDImage Top Directory](http://cdimage.ubuntu.com/)
+- [Ubuntu Xenial Netboot amd64](http://archive.ubuntu.com/ubuntu/dists/xenial-updates/main/installer-amd64/current/images/netboot/)
+- [Ubuntu Xenial Netboot arm64](http://ports.ubuntu.com/ubuntu-ports/dists/xenial-updates/main/installer-arm64/current/images/netboot/)
+- [Ubuntu Xenial Netboot armhf](http://ports.ubuntu.com/ubuntu-ports/dists/xenial-updates/main/installer-armhf/current/images/generic/netboot/)
+- [Ubuntu 16.04.1 LTS (Xenial Xerus) Server install image](http://cdimage.ubuntu.com/releases/xenial/release/)
+- [Ubuntu 16.04.1 LTS (Xenial Xerus) Desktop/Server install Image](http://releases.ubuntu.com/16.04/)
+- [Ubuntu 16.04.1 LTS (Xenial Xerus) Daily Build i386/amd64](http://cdimage.ubuntu.com/xenial/daily-live/pending/)
+
+- - -
+
 ## DOCKER OPTIONS
 
 Docker options must be fully satisfied. Look [Kernel](KERNEL/README.md) for detail.  
