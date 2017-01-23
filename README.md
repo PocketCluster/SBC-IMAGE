@@ -1,5 +1,13 @@
 # Single Board Computer Image Builder
 
+## DOCKER OPTIONS
+
+Docker options must be fully satisfied. Look [Kernel](KERNEL/README.md) for detail.  
+For Swarm cluster to have `overlay` network, we need `CONFIG_VXLAN` in kernel option. (CRITICAL)
+
+- [vxlan module](DOCUMENT/kernel-bridge-and-vxlan)
+- [No route to host / connection refused - swarm mode on ARM #25892](https://github.com/docker/docker/issues/25892)
+
 ## Build Process  
 
 Firstly `rsync` [BUILDER](/BUILDER) and `/POCKET/UBUNTU-BUILDER/BUILDER` for base files.  
