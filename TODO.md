@@ -19,3 +19,7 @@
   - Look how Hypriot has done in [`/etc/firstboot.d/10-resize-rootdisk`](./DOCUMENT/10-resize-rootdisk.sh)  
   - Look how dhyve-os has done in [`/etc/init.d/S3automount`](./DOCUMENT/S03automount.sh)
 12. [ ] `apt-mark hold u-boot-tools` so u-boot won't destroy bootloader.
+13. [ ] `apt-get install libpam-systemd dbus` to prevent ssh session hang.
+14. [ ] `sync` disks before quit.
+15. [ ] `apt-get install apparmor` for proper apparmor parser.
+16. [ ] `sysctl -w kernel/keys/root_maxkeys=1000000`
