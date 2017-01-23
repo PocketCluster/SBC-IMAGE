@@ -14,7 +14,8 @@ In order to minimize the amount of work required, we'll build a process follows 
   ```
 3. [Check config](https://github.com/docker/docker/blob/master/contrib/check-config.sh) for docker.
 4. Combine the two compile options together. Make sure all required are built-in rather than become a module.
-5. Compile kernel.
+5. [Integrate AUFS support](wiki/Installing,-running,-using-docker-on-armhf-(ARMv7)-devices#aufs-integration) (optional as it's still unstable) 
+6. Compile kernel.
 
 
 > References

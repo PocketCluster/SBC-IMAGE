@@ -65,11 +65,16 @@ In order to speed up compilation, please execute compilation on bare-metal PC
   ```sh
   cp arch/arm64/boot/Image arch/arm64/boot/dts/meson64_odroidc2.dtb ./boot && sync
   ```
-8. Copy modules
+8. Install modules
 
   ```sh
   make modules_install ARCH=arm64 INSTALL_MOD_PATH=<target_path> && sync
   ```
+9. Install firmware (WIP : What variable for path? `INSTALL_FIRMWARE_PATH`?)
+
+  ```sh
+  make firmware_install
+  ```  
 
 > Reference
 
