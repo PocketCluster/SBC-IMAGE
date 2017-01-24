@@ -51,13 +51,21 @@ function bootstrap() {
     fi
 }
 
+function check_crossbuild_req() {
+    # Required tools
+    if [ ${ARCH} != ${DEVICE_ARCH} ]; then
+        apt-get -y install binfmt-support debootstrap f2fs-tools qemu-user-static rsync ubuntu-keyring wget whois
+        update-binfmts --enable qemu-${DEVICE_ARCH}
+    fi
+}
+
 function unarchive_base_image() {
     local BASE_IMAGE="${RELEASE}-base-arm64.tar.gz"
     local TARGET="${1}"
     if [ ! -d "${TARGET}" ]; then
         mkdir -p "${TARGET}"
     fi
-    tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET} .
+    tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET}
 }
 
 function sync_to() {
@@ -65,7 +73,8 @@ function sync_to() {
     if [ ! -d "${TARGET}" ]; then
         mkdir -p "${TARGET}"
     fi
-    rsync -a --progress --delete ${R}/ ${TARGET}/
+    #rsync -a --progress --delete ${R}/ ${TARGET}/
+    rsync -a --delete ${R}/ ${TARGET}/
 }
 
 # Mount host system
@@ -78,35 +87,36 @@ function mount_system() {
     mount -t sysfs none $R/sys
     mount -o bind /dev $R/dev
     mount -o bind /dev/pts $R/dev/pts
-    echo "nameserver 8.8.8.8" > $R/etc/resolv.conf
 }
 
-function generate_locale() {
-    # Setup default locale
-    cat <<EOM >$R/etc/default/locale
-LANG="en_US.UTF-8"
-LANGUAGE="en_US.UTF-8"
-LC_NUMERIC="en_US.UTF-8"
-LC_TIME="en_US.UTF-8"
-LC_MONETARY="en_US.UTF-8"
-LC_PAPER="en_US.UTF-8"
-LC_NAME="en_US.UTF-8"
-LC_ADDRESS="en_US.UTF-8"
-LC_TELEPHONE="en_US.UTF-8"
-LC_MEASUREMENT="en_US.UTF-8"
-LC_IDENTIFICATION="en_US.UTF-8"
-LC_CTYPE="UTF-8"
-LC_COLLATE="en_US.UTF-8"
-LC_ALL="en_US.UTF-8"
+function configure_network() {
+    # Set up hosts
+    echo ${DIST_HOSTNAME} >$R/etc/hostname
+    echo "nameserver 8.8.8.8" > $R/etc/resolv.conf
+    cat <<EOM >$R/etc/hosts
+127.0.0.1       localhost
+# ::1             localhost ip6-localhost ip6-loopback
+# ff02::1         ip6-allnodes
+# ff02::2         ip6-allrouters
+
+127.0.1.1       ${DIST_HOSTNAME}
 EOM
 
-    for LOCALE in $(chroot $R locale | cut -d'=' -f2 | grep -v : | sed 's/"//g' | uniq); do
-        if [ -n "${LOCALE}" ]; then
-            chroot $R locale-gen $LOCALE
-            chroot $R update-locale LC_ALL=$LOCALE
-        fi
-    done
-    chroot $R dpkg-reconfigure --frontend=noninteractive locales
+    mkdir -p $R/etc/network
+    chroot $R chown -R root:root /etc/network
+
+    cat <<EOM >$R/etc/network/interfaces
+# interfaces(5) file used by ifup(8) and ifdown(8)
+# Include files from /etc/network/interfaces.d:
+source-directory /etc/network/interfaces.d
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+EOM
 }
 
 # Set up initial sources.list
@@ -135,41 +145,22 @@ function apt_update_only() {
     chroot $R apt-get update
 }
 
-# Install Ubuntu Tiny
-function ubunty_essential() {
-    # Basic Packages
-    chroot $R apt-get -y install language-pack-en-base f2fs-tools software-properties-common u-boot-tools isc-dhcp-client udev netbase ifupdown iproute iputils-ping wget net-tools wpasupplicant ntpdate ntp less tzdata console-common nano console-data
+# Install Ubuntu Development
+function ubuntu_development() {
+    # only the essentials
+    chroot $R apt-get -y install dialog language-pack-en-base software-properties-common udev wget sudo whois less f2fs-tools vim nano htop rsync python-pip dosfstools
+    chroot $R apt-get -y install isc-dhcp-client netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata build-essential
     # Config timezone, Keyboard, Console
     chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
-    #chroot $R dpkg-reconfigure --frontend=noninteractive keyboard-configuration
-    #chroot $R dpkg-reconfigure --frontend=noninteractive console-setup
-}
+    chroot $R dpkg-reconfigure --frontend=noninteractive debconf
 
-function create_groups() {
-    chroot $R groupadd -f --system input
-    cat <<'EOM' >$R/usr/local/sbin/adduser.local
-#!/bin/sh
-# This script is executed as the final step when calling `adduser`
-# USAGE:
-#   adduser.local USER UID GID HOME
+    # console & keyboard
+    chroot $R apt-get -y install console-common console-data console-setup keyboard-configuration
+    chroot $R dpkg-reconfigure --frontend=noninteractive keyboard-configuration
+    chroot $R dpkg-reconfigure --frontend=noninteractive console-setup
 
-# Add user to the Raspberry Pi specific groups
-usermod -a -G adm,input,video $1
-EOM
-    chmod +x $R/usr/local/sbin/adduser.local
-}
-
-# Create default user !!! This will be removed in release image as it will not properly create login profile for the real user. !!!
-# Is this related to rc.local service???
-function create_user() {
-    local DIST_USERNAME="pocket"
-    local DIST_USERGROUP="pocket"
-    local DATE=$(date +%m%H%M%S)
-    local PASSWD=$(mkpasswd -m sha-512 ${DIST_USERNAME} ${DATE})
-
-    chroot $R addgroup --gid 29999 ${DIST_USERGROUP}
-    chroot $R adduser --gecos "PocketCluster (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
-    chroot $R usermod -a -G sudo -p ${PASSWD} ${DIST_USERNAME}
+    # system hang prevention
+    chroot $R apt-get -y install libpam-systemd dbus
 }
 
 function configure_ssh() {
@@ -202,33 +193,92 @@ EOM
     chroot $R ln -s /etc/systemd/system/sshdgenkeys.service /etc/systemd/system/ssh.service.wants
 }
 
-function configure_network() {
-    # Set up hosts
-    echo ${DIST_HOSTNAME} >$R/etc/hostname
-    cat <<EOM >$R/etc/hosts
-127.0.0.1       localhost
-# ::1             localhost ip6-localhost ip6-loopback
-# ff02::1         ip6-allnodes
-# ff02::2         ip6-allrouters
-
-127.0.1.1       ${DIST_HOSTNAME}
+function generate_locale() {
+    # Setup default locale
+    cat <<EOM >$R/etc/default/locale
+LANG="en_US.UTF-8"
+LANGUAGE="en_US.UTF-8"
+LC_NUMERIC="en_US.UTF-8"
+LC_TIME="en_US.UTF-8"
+LC_MONETARY="en_US.UTF-8"
+LC_PAPER="en_US.UTF-8"
+LC_NAME="en_US.UTF-8"
+LC_ADDRESS="en_US.UTF-8"
+LC_TELEPHONE="en_US.UTF-8"
+LC_MEASUREMENT="en_US.UTF-8"
+LC_IDENTIFICATION="en_US.UTF-8"
+LC_CTYPE="UTF-8"
+LC_COLLATE="en_US.UTF-8"
+LC_ALL="en_US.UTF-8"
 EOM
 
-    cat <<EOM >$R/etc/network/interfaces
-# interfaces(5) file used by ifup(8) and ifdown(8)
-# Include files from /etc/network/interfaces.d:
-source-directory /etc/network/interfaces.d
+    # Doesn't work ;(
+    #cp -Rf $R/usr/share/locale/en* $R/tmp/
+    #rm -rf $R/usr/share/locale/*
+    #mv $R/tmp/en* $R/usr/share/locale/
 
-# The loopback network interface
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet dhcp
-EOM
+    for LOCALE in $(chroot $R locale | cut -d'=' -f2 | grep -v : | sed 's/"//g' | uniq); do
+        if [ -n "${LOCALE}" ]; then
+            chroot $R locale-gen $LOCALE
+            chroot $R update-locale LC_ALL=$LOCALE
+        fi
+    done
+    chroot $R dpkg-reconfigure --frontend=noninteractive locales
 }
 
-function setup_kernel_with_bootini() {
+function docker_setup() {
+    # docker dependencies
+    chroot $R apt-get -y install apparmor adduser iptables init-system-helpers lsb-base libapparmor1 libc6 libdevmapper1.02.1 
+    # docker recommends
+    chroot $R apt-get -y install cgroupfs-mount cgroup-lite git xz-utils
+    # docker suggestion
+    chroot $R apt-get -y install btrfs-tools
+    # docker possible utility
+    chroot $R apt-get -y install apparmor-profiles apparmor-utils bridge-utils
+
+    # aufs is blocked for now as not in mainstream yet 4.9 maybe?
+    # chroot $R apt-get -y install aufs-tools
+
+    # install docker
+    mkdir -p $R/tmp/
+    cp ${PWD}/docker.io_1.10.3-0ubuntu6_arm64.deb $R/tmp
+    chroot $R dpkg -i /tmp/docker.io_1.10.3-0ubuntu6_arm64.deb
+    rm -rf $R/tmp/docker.io_1.10.3-0ubuntu6_arm64.deb || true
+
+    echo "kernel.keys.root_maxkeys = 1000000" >> $R/etc/sysctl.conf
+    chroot $R apt-mark hold u-boot-tools docker.io
+}
+
+function create_groups() {
+    chroot $R groupadd -f --system input
+    cat <<'EOM' >$R/usr/local/sbin/adduser.local
+#!/bin/sh
+# This script is executed as the final step when calling `adduser`
+# USAGE:
+#   adduser.local USER UID GID HOME
+
+# Add user to the Raspberry Pi specific groups
+usermod -a -G adm,input,video $1
+EOM
+    chmod +x $R/usr/local/sbin/adduser.local
+}
+
+# Create default user !!! This will be removed in release image as it will not properly create login profile for the real user. !!!
+# Is this related to rc.local service???
+function create_user() {
+    local DIST_USERNAME="pocket"
+    local DIST_USERGROUP="pocket"
+    local DATE=$(date +%m%H%M%S)
+    local PASSWD=$(mkpasswd -m sha-512 ${DIST_USERNAME} ${DATE})
+
+    chroot $R addgroup --gid 29999 ${DIST_USERGROUP}
+    chroot $R adduser --gecos "PocketCluster (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
+    chroot $R usermod -a -G sudo -p ${PASSWD} ${DIST_USERNAME}
+
+    echo "pocket ALL=(ALL) NOPASSWD:ALL" > $R/etc/sudoers.d/pocket
+}
+
+function setup_initramfs() {
     chroot $R apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys AB19BAC9
     echo "deb http://deb.odroid.in/c2/ xenial main" >  $R/etc/apt/sources.list.d/odroid.list
     chroot $R apt-get -q=2 update
@@ -240,28 +290,6 @@ function setup_kernel_with_bootini() {
     echo "copy_exec /sbin/e2fsck /sbin" >> $R/etc/initramfs-tools/hooks/e2fsck.sh
     echo "copy_exec /sbin/fsck.ext4 /sbin" >> $R/etc/initramfs-tools/hooks/e2fsck.sh
     chmod +x $R/etc/initramfs-tools/hooks/e2fsck.sh
-
-    # <Install scripts from bootini package >
-    mkdir -p $R/tmp/btini
-    chroot $R apt-get -q -y download bootini
-    mv $R/*deb $R/tmp
-    dpkg-deb -x $R/tmp/bootini*.deb $R/tmp/btini/
-    cp -r -v $R/tmp/btini/etc/* $R/etc
-    cp -r -v $R/tmp/btini/bin/* $R/bin
-    cp -r -v $R/tmp/btini/usr/* $R/usr
-    rm -rf $R/tmp/btini
-    rm -rf $R/tmp/*.deb
-
-    # </HK quirk>
-    mkdir -p $R/media/boot
-    chroot $R apt-get -q=2 -y install linux-image-c2
-    # U-571
-    mkdir -p $R/boot/conf.d/system.default
-    cp -v ${PWD}/uEnv.txt $R/boot/conf.d/system.default/uEnv.txt
-    
-    # This part is re-done in rsync stage in image creation
-    #(cd $R/boot/conf.d/; ln -s ./system.default ./default)
-    #(cd $R/boot/conf.d/system.default; ln -s ../../../media/boot/ ./kernel)
 }
 
 function apt_clean() {
@@ -283,17 +311,15 @@ function clean_up() {
     rm -f $R/var/lib/urandom/random-seed
 
     # clean up locales and apt cache
-    cp -R $R/usr/share/locale/en\@* $R/tmp/
-    rm -rf $R/usr/share/locale/*
-    mv $R/tmp/en\@* $R/usr/share/locale/
     rm -rf $R/var/cache/debconf/*-old
     rm -rf $R/var/lib/apt/lists/*
-    rm -rf $R/usr/share/doc/*
 
     # Clean up old firmware and modules
     rm -f $R/boot/.firmware_revision || true
     rm -rf $R/boot.bak || true
-    rm -rf $R/lib/modules/4.1.7* || true
+
+    # non-existent at this point
+    #rm -rf $R/lib/modules/4.1.7* || true
     rm -rf $R/lib/modules.bak || true
 
     # Potentially sensitive.
@@ -324,34 +350,31 @@ function umount_system() {
     umount -l $R/proc
     umount -l $R/dev/pts
     umount -l $R/dev
-    echo "" > $R/etc/resolv.conf
 }
 
 function single_stage_odroid() {
     R="${BASE_R}"
-    #bootstrap
+    #check_crossbuild_req
     unarchive_base_image ${R}
     sync_to "${DEVICE_R}"
 
     R="${DEVICE_R}"
     mount_system
+    configure_network
     apt_sources
     apt_update_only
-    ubunty_essential
-    # Need dpkg-reconfigure installed
-    #generate_locale
+    ubuntu_development
+    configure_ssh
+    generate_locale
+    docker_setup
 
     create_groups
     create_user
-    configure_ssh
-    configure_network
     
-    setup_kernel_with_bootini
-
+    setup_initramfs
     apt_clean
     clean_up
     umount_system
 }
 
 single_stage_odroid
-
