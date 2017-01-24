@@ -15,3 +15,7 @@ Development file tree. This will include more packages. Base `Xenial` image is i
 ### `make-ripped-image.sh`  
 
 Make iso image with ripped off bootloader from official image `xubuntu-xenial-20160501-longsleep-pine64-8GB.zip`.  
+
+### Software Download 
+
+- [Pine A64 Software Release](http://wiki.pine64.org/index.php/Pine_A64_Software_Release)
