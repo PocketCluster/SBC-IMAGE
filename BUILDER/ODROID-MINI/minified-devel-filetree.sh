@@ -45,7 +45,7 @@ function bootstrap() {
         if [ "${ARCH}" == ${DEVICE_ARCH} ]; then
             debootstrap --variant=minbase --verbose $RELEASE $R http://ports.ubuntu.com/
         else
-            qemu-debootstrap --variant=minbase --verbose --arch=${DEVICE_ARCH} $RELEASE $R http://ports.ubuntu.com/
+            qemu-debootstrap --variant=minbase --verbose --arch=arm64 $RELEASE $R http://ports.ubuntu.com/
         fi
         touch "$R/tmp/.bootstrap"
     fi
@@ -329,16 +329,17 @@ function umount_system() {
 
 function single_stage_odroid() {
     R="${BASE_R}"
-    bootstrap
+    #bootstrap
     unarchive_base_image ${R}
     sync_to "${DEVICE_R}"
 
     R="${DEVICE_R}"
     mount_system
-    generate_locale
     apt_sources
     apt_update_only
     ubunty_essential
+    # Need dpkg-reconfigure installed
+    #generate_locale
 
     create_groups
     create_user

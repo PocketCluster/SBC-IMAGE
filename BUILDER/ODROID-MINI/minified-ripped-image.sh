@@ -51,10 +51,11 @@ function make_odroidc2_image() {
     fi
 
     # SIZE_LIMIT -> 700 MB * 1024 * 1024 / 512 = SIZE 1433600 | SEEK = SIZE_LIMIT + 65
+    # SIZE_LIMIT -> 300 MB * 1024 * 1024 / 512 = SIZE 614400 | SEEK = SIZE_LIMIT + 65
     if [ ${GB} -eq 0 ]; then
-        SEEK=830
-        SIZE=1433600
-        SIZE_LIMIT=700
+        SEEK=300
+        SIZE=614400
+        SIZE_LIMIT=300
 
     # SIZE_LIMIT -> 1280 MB * 1024 * 1024 / 512 = SIZE 2621440 | SEEK = SIZE_LIMIT + 65
     elif [ ${GB} -eq 1 ]; then
@@ -94,7 +95,8 @@ EOM
     mount "${ROOT_LOOP}" "${MOUNTDIR}"
     mkdir -p "${MOUNTDIR}/boot"
     mount "${BOOT_LOOP}" "${MOUNTDIR}/boot"
-    rsync -a --progress "$R/" "${MOUNTDIR}/"
+    #rsync -a --progress "$R/" "${MOUNTDIR}/"
+    rsync -a "$R/" "${MOUNTDIR}/"
     umount -l "${MOUNTDIR}/boot"
     umount -l "${MOUNTDIR}"
     losetup -d "${ROOT_LOOP}"
