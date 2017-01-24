@@ -50,19 +50,11 @@ function make_odroidc2_image() {
         exit 1
     fi
 
-    # SIZE_LIMIT -> 700 MB * 1024 * 1024 / 512 = SIZE 1433600 | SEEK = SIZE_LIMIT + 65
-    # SIZE_LIMIT -> 300 MB * 1024 * 1024 / 512 = SIZE 614400 | SEEK = SIZE_LIMIT + 65
+    # SIZE_LIMIT -> (626 + 129) ~ 760 MB | SIZE -> 760 MB * 1024 * 1024 / 512 = 1556480 | SEEK = SIZE_LIMIT * 1.2 = 912
     if [ ${GB} -eq 0 ]; then
-        SEEK=300
-        SIZE=614400
-        SIZE_LIMIT=300
-
-    # SIZE_LIMIT -> 1280 MB * 1024 * 1024 / 512 = SIZE 2621440 | SEEK = SIZE_LIMIT + 65
-    elif [ ${GB} -eq 1 ]; then
-        SEEK=1448
-        SIZE=2621440
-        SIZE_LIMIT=1280
-    fi
+        SIZE_LIMIT=760
+        SIZE=921600
+        SEEK=912
 
     # If a compress version exists, remove it.
     rm -f "${BASEDIR}/${IMAGE}.bz2" || true
