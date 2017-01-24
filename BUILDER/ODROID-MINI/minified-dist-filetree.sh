@@ -231,10 +231,14 @@ function create_user() {
 }
 
 function setup_odroid_specifics() {
+    # firmware
     mkdir -p $R/lib/firmware/
-    #tar -xzf ../CAPTURED-BOOT/ODROID/odroid-firmware-3.14.79-102.tar.gz -C $R/lib/firmware/
+    tar -xzf ../CAPTURED-BOOT/ODROID/odroid-firmware-3.14.79-102.tar.gz -C $R/lib/firmware/
+    # modules
     mkdir -p $R/lib/modules/
-    #tar -xzf ../CAPTURED-BOOT/ODROID/odroid-modules-3.14.79-102.tar.gz -C $R/lib/modules/
+    tar -xzf ../CAPTURED-BOOT/ODROID/odroid-modules-3.14.79-102.tar.gz -C $R/lib/modules/
+    # boot
+    tar -xzf ../CAPTURED-BOOT/ODROID/BOOTDIR-C2-3.14.79-102-20170125.tar.gz -C $R/
 }
 
 function apt_clean() {

@@ -86,18 +86,14 @@ EOM
     MOUNTDIR="${BUILDDIR}/mount"
     mkdir -p "${MOUNTDIR}"
     mount "${ROOT_LOOP}" "${MOUNTDIR}"
-    mkdir -p "${MOUNTDIR}/boot"
-    mount "${BOOT_LOOP}" "${MOUNTDIR}/boot"
-    #rsync -a --progress "$R/" "${MOUNTDIR}/"
     rsync -a "$R/" "${MOUNTDIR}/"
-    umount -l "${MOUNTDIR}/boot"
     umount -l "${MOUNTDIR}"
     losetup -d "${ROOT_LOOP}"
     losetup -d "${BOOT_LOOP}"
 
     # Copying the original bootloader
     TOP_LOOP="$(losetup -o 0 --sizelimit $((264192 * 512)) -f --show ${BASEDIR}/${IMAGE})"
-    dd if=${PWD}/../BOOTLOADER-C2-3.14.29-56.img of=${TOP_LOOP} bs=512 count=264192
+    dd if=${PWD}/../CAPTURED-BOOT/ODROID/BOOTLOADER-C2-3.14.79-102-20170125.img of=${TOP_LOOP} bs=512 count=264192
     losetup -d "${TOP_LOOP}"
 }
 
