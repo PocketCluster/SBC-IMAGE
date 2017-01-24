@@ -44,17 +44,22 @@ Make iso image with ripped off bootloader from official image `ubuntu64-16.04lts
   # extract the boot sector
   dd if=/dev/mmcblk0 of="./BOOTLOADER-C2-$(uname -r)-20170125.img" bs=512 count=264192
   ```
-2. Capture firmware
+2. Capture vmlinuz
+
+  ```sh
+  tar ./BOOTDIR-C2-$(uname -r)-20170125.tar.gz /boot/
+  ```    
+3. Capture firmware
 
   ```sh
   tar ./odroid-firmware-3.14.79-102.tar.gz /lib/firmware/3.14.79-102/
   ```
-3. Capture modules
+4. Capture modules
 
   ```sh  
   tar ./odroid-modules-3.14.79-102.tar.gz /lib/modules/3.14.79-102/
   ```
-4. Capture config
+5. Capture config
 
   ```sh
   cp /proc/config.gz .

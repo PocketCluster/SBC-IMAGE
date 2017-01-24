@@ -285,6 +285,7 @@ function setup_odroid_specifics() {
     tar -xzf ../CAPTURED-BOOT/ODROID/odroid-firmware-3.14.79-102.tar.gz -C $R/lib/firmware/
     mkdir -p $R/lib/modules/
     tar -xzf ../CAPTURED-BOOT/ODROID/odroid-modules-3.14.79-102.tar.gz -C $R/lib/modules/
+    tar -xzf ../CAPTURED-BOOT/ODROID/BOOTDIR-C2-3.14.79-102-20170125.tar.gz -C $R/
 }
 
 function apt_clean() {
