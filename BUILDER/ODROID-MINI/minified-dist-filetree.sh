@@ -126,6 +126,15 @@ Acquire::PDiffs "0";
 EOM
 }
 
+function apt_block_suggestion() {
+    mkdir -p $R/etc/apt/
+    cat <<EOM >$R/etc/apt/apt.conf
+# APT::Install-Recommends "false";
+APT::Get::Install-Suggests "false";
+APT::Install-Suggests "false";
+EOM
+}
+
 function apt_update_only() {
     chroot $R apt-get update
 }
@@ -133,7 +142,7 @@ function apt_update_only() {
 # Install Ubuntu Essentials
 function ubuntu_essential() {
     # only the essentials
-    chroot $R apt-get -y install language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata dialog
+    chroot $R apt-get -y install language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata dialog resolvconf
     # Config timezone, Keyboard, Console
     chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
     chroot $R dpkg-reconfigure --frontend=noninteractive debconf
@@ -264,6 +273,9 @@ function clean_up() {
     rm -rf $R/var/lib/apt/lists/*
     rm -rf $R/usr/share/doc/*
 
+    # remove logs as well.
+    rm -rf $R/var/log/*
+
     # Clean up old firmware and modules
     rm -f $R/boot/.firmware_revision || true
     rm -rf $R/boot.bak || true
@@ -312,6 +324,7 @@ function single_stage_odroid() {
     mount_system
     configure_network
     apt_sources
+    apt_block_suggestion
     apt_update_only
     ubuntu_essential
     generate_locale

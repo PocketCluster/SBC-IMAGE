@@ -30,6 +30,7 @@ function clean_residue() {
 
     rm -rf ${BASE_R}
     rm -rf ${DEVICE_R}
+    rm -rf ${PWD}/C2
 }
 
 clean_residue
