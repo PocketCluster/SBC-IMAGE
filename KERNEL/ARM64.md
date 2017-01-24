@@ -9,13 +9,7 @@ In order to speed up compilation, please execute compilation on bare-metal PC
   ```sh
   apt update && apt install git lzop build-essential gcc libncurses5-dev libc6-i386 lib32stdc++6 zlib1g:i386
   ```
-2. Install qemu packages as well (optional)
-  
-  ```sh
-  apt-get -y install binfmt-support debootstrap f2fs-tools qemu-user-static rsync ubuntu-keyring wget whois
-  update-binfmts --enable qemu-${DEVICE_ARCH}
-  ```
-3. Install compiler toolchain
+2. Install compiler toolchain
 
   * Download [gcc-linaro-aarch64-linux-gnu-4.9-2014.09_linux.tar.xz](http://releases.linaro.org/archive/14.09/components/toolchain/binaries/gcc-linaro-aarch64-linux-gnu-4.9-2014.09_linux.tar.xz)  
 
@@ -23,7 +17,7 @@ In order to speed up compilation, please execute compilation on bare-metal PC
   mkdir -p /opt/toolchains
   tar Jxvf gcc-linaro-aarch64-linux-gnu-4.9-2014.09_linux.tar.xz -C /opt/toolchains/
   ```
-4. Have a compile environment script
+3. Have a compile environment script
 
   `compile-env.bashrc`
 
@@ -42,7 +36,7 @@ In order to speed up compilation, please execute compilation on bare-metal PC
   ...
   gcc version 4.9.2 20140904 (prerelease) (crosstool-NG linaro-1.13.1-4.9-2014.09 - Linaro GCC 4.9-2014.09)
   ```
-5. Download kernel source or clone source tree 
+4. Download kernel source or clone source tree 
 
   - **Should match with stock kernel so config option can be reused**
   - <https://github.com/hardkernel/linux/tree/odroidc2-3.14.y>
