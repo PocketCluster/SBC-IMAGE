@@ -50,11 +50,11 @@ function make_odroidc2_image() {
         exit 1
     fi
 
-    # SIZE_LIMIT -> (626 + 129) ~ 760 MB | SIZE -> 760 MB * 1024 * 1024 / 512 = 1556480 | SEEK = SIZE_LIMIT * 1.2 = 912
+    # SIZE_LIMIT -> (819 + 129) ~ 950 MB | SIZE -> 950 MB * 1024 * 1024 / 512 = 1945600 | SEEK = SIZE_LIMIT * 1.1 = 1045
     if [ ${GB} -eq 0 ]; then
-        SIZE_LIMIT=760
-        SIZE=921600
-        SEEK=912
+        SIZE_LIMIT=950
+        SIZE=1945600
+        SEEK=1045
     fi
 
     # If a compress version exists, remove it.

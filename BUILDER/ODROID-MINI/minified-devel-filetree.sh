@@ -281,7 +281,9 @@ function create_user() {
 function setup_odroid_specifics() {
     #install linux-firmware, initramfs
     chroot $R apt-get -y install linux-firmware initramfs-tools initramfs-tools-bin initramfs-tools-core
+    mkdir -p $R/lib/firmware/
     tar -xzf ../CAPTURED-BOOT/ODROID/odroid-firmware-3.14.79-102.tar.gz -C $R/lib/firmware/
+    mkdir -p $R/lib/modules/
     tar -xzf ../CAPTURED-BOOT/ODROID/odroid-modules-3.14.79-102.tar.gz -C $R/lib/modules/
 }
 

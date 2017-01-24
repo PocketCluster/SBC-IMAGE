@@ -231,9 +231,10 @@ function create_user() {
 }
 
 function setup_odroid_specifics() {
-
-
-
+    mkdir -p $R/lib/firmware/
+    #tar -xzf ../CAPTURED-BOOT/ODROID/odroid-firmware-3.14.79-102.tar.gz -C $R/lib/firmware/
+    mkdir -p $R/lib/modules/
+    #tar -xzf ../CAPTURED-BOOT/ODROID/odroid-modules-3.14.79-102.tar.gz -C $R/lib/modules/
 }
 
 function apt_clean() {
