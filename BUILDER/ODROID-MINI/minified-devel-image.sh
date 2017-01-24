@@ -97,7 +97,7 @@ EOM
 
     # Copying the original bootloader
     TOP_LOOP="$(losetup -o 0 --sizelimit $((264192 * 512)) -f --show ${BASEDIR}/${IMAGE})"
-    dd if=${PWD}/../BOOTLOADER-C2-3.14.29-56.img of=${TOP_LOOP} bs=512 count=264192
+    dd if=${PWD}/../CAPTURED-BOOT/ODROID/BOOTLOADER-C2-3.14.79-102-20170125.img of=${TOP_LOOP} bs=512 count=264192
     losetup -d "${TOP_LOOP}"
 }
 

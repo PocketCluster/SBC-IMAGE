@@ -278,18 +278,11 @@ function create_user() {
     echo "pocket ALL=(ALL) NOPASSWD:ALL" > $R/etc/sudoers.d/pocket
 }
 
-function setup_initramfs() {
-    chroot $R apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys AB19BAC9
-    echo "deb http://deb.odroid.in/c2/ xenial main" >  $R/etc/apt/sources.list.d/odroid.list
-    chroot $R apt-get -q=2 update
-
-    chroot $R apt-get -q=2 -y install initramfs-tools
-    # <HK quirk>
-    echo "#!/bin/sh" > $R/etc/initramfs-tools/hooks/e2fsck.sh
-    echo ". /usr/share/initramfs-tools/hook-functions" >> $R/etc/initramfs-tools/hooks/e2fsck.sh
-    echo "copy_exec /sbin/e2fsck /sbin" >> $R/etc/initramfs-tools/hooks/e2fsck.sh
-    echo "copy_exec /sbin/fsck.ext4 /sbin" >> $R/etc/initramfs-tools/hooks/e2fsck.sh
-    chmod +x $R/etc/initramfs-tools/hooks/e2fsck.sh
+function setup_odroid_specifics() {
+    #install linux-firmware, initramfs
+    chroot $R apt-get -y install linux-firmware initramfs-tools initramfs-tools-bin initramfs-tools-core
+    tar -xzf ../CAPTURED-BOOT/ODROID/odroid-firmware-3.14.79-102.tar.gz -C $R/lib/firmware/
+    tar -xzf ../CAPTURED-BOOT/ODROID/odroid-modules-3.14.79-102.tar.gz -C $R/lib/modules/
 }
 
 function apt_clean() {
@@ -371,7 +364,7 @@ function single_stage_odroid() {
     create_groups
     create_user
     
-    setup_initramfs
+    setup_odroid_specifics
     apt_clean
     clean_up
     umount_system
