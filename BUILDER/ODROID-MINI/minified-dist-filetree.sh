@@ -166,9 +166,10 @@ LC_COLLATE="en_US.UTF-8"
 LC_ALL="en_US.UTF-8"
 EOM
 
-    cp -R $R/usr/share/locale/en\@* $R/tmp/
-    rm -rf $R/usr/share/locale/*
-    mv $R/tmp/en\@* $R/usr/share/locale/
+    # Doesn't work ;(
+    #cp -Rf $R/usr/share/locale/en* $R/tmp/
+    #rm -rf $R/usr/share/locale/*
+    #mv $R/tmp/en* $R/usr/share/locale/
 
     for LOCALE in $(chroot $R locale | cut -d'=' -f2 | grep -v : | sed 's/"//g' | uniq); do
         if [ -n "${LOCALE}" ]; then
@@ -193,8 +194,9 @@ function docker_setup() {
     # chroot $R apt-get -y install aufs-tools
 
     # install docker
+    mkdir -p $R/tmp/
     cp ${PWD}/docker.io_1.10.3-0ubuntu6_arm64.deb $R/tmp
-    chroot $R dpkg -i $R/tmp/docker.io_1.10.3-0ubuntu6_arm64.deb
+    chroot $R dpkg -i /tmp/docker.io_1.10.3-0ubuntu6_arm64.deb
     rm -rf $R/tmp/docker.io_1.10.3-0ubuntu6_arm64.deb || true
 
     echo "kernel.keys.root_maxkeys = 1000000" >> $R/etc/sysctl.conf
