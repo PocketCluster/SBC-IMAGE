@@ -41,24 +41,16 @@ fi
 function make_odroidc2_image() {
     # Build the image file
     local FS="${1}"
-    local GB=${2}
 
     if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
         echo "ERROR! Unsupport filesystem requested. Exitting."
         exit 1
     fi
 
-    if [ ${GB} -ne 0 ] && [ ${GB} -ne 1 ]; then
-        echo "ERROR! Unsupport card image size requested. Exitting."
-        exit 1
-    fi
-
     # SIZE_LIMIT -> (407 + 135) ~ 550 MB | SIZE -> 550 * 1024 * 1024 / 512 = 1126400     |  SEEK = SIZE_LIMIT * 1.1 = 600
-    if [ ${GB} -eq 0 ]; then
-        SIZE_LIMIT=550
-        SIZE=1126400
-        SEEK=600
-    fi
+    SIZE_LIMIT=550
+    SIZE=1126400
+    SEEK=600
 
     # If a compress version exists, remove it.
     rm -f "${BASEDIR}/${IMAGE}.bz2" || true
@@ -81,7 +73,7 @@ EOM
     # make filesystem
     mkfs.vfat -n PC_BOOT -S 512 -s 16 -v "${BOOT_LOOP}"
     if [ "${FS}" == "ext4" ]; then
-        mkfs.ext4 -O ^has_journal -b 4096 -L PC_ROOT -U e139ce78-9841-40fe-8823-96a304a09859 -m 0 "${ROOT_LOOP}" 
+        mkfs.ext4 -O ^has_journal -b 4096 -L PC_ROOT -U ${FS_ROOT_UUID} -m 0 "${ROOT_LOOP}" 
     else
         mkfs.f2fs -l PC_ROOT -o 1 "${ROOT_LOOP}"
     fi
@@ -108,5 +100,5 @@ function make_tarball() {
 }
 
 R=${DEVICE_R}
-make_odroidc2_image ${FS_TYPE} 0
+make_odroidc2_image ${FS_TYPE}
 make_tarball

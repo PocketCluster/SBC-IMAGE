@@ -31,9 +31,8 @@ DIST_HOSTNAME="pocket-node"
 
 # Either 'ext4' or 'f2fs'
 FS_TYPE="ext4"
-
-# Either 0.5, 4, 8 or 16
-FS_SIZE=4
+# DISK UUID
+FS_ROOT_UUID="e139ce78-9841-40fe-8823-96a304a09859"
 
 # Either 0 or 1.
 # - 0 don't make generic rootfs tarball
