@@ -55,9 +55,16 @@ function make_odroidc2_image() {
     # If a compress version exists, remove it.
     rm -f "${BASEDIR}/${IMAGE}.bz2" || true
 
+    # Create a loop image
     dd if=/dev/zero of="${BASEDIR}/${IMAGE}" bs=1M count=1
     dd if=/dev/zero of="${BASEDIR}/${IMAGE}" bs=1M count=0 seek=${SEEK}
 
+    # Copying the original bootloader
+    TOP_LOOP="$(losetup -o 0 --sizelimit $((264192 * 512)) -f --show ${BASEDIR}/${IMAGE})"
+    dd if=${PWD}/../CAPTURED-BOOT/ODROID/BOOTLOADER-C2-3.14.79-102-20170125.img of=${TOP_LOOP} bs=512 count=264192
+    losetup -d "${TOP_LOOP}"
+
+    # Set disk partition
     sfdisk -f "$BASEDIR/${IMAGE}" <<EOM
 unit: sectors
 
@@ -67,29 +74,19 @@ unit: sectors
 4 : start=        0, size=        0, Id= 0
 EOM
 
-    BOOT_LOOP="$(losetup -o $((2048 * 512)) --sizelimit $((262144 * 512)) -f --show ${BASEDIR}/${IMAGE})"
+#    BOOT_LOOP="$(losetup -o $((2048 * 512)) --sizelimit $((262144 * 512)) -f --show ${BASEDIR}/${IMAGE})"
+#    mkfs.vfat -n PC_BOOT -S 512 -s 16 -v "${BOOT_LOOP}"
+#    losetup -d "${BOOT_LOOP}"
+
+    # make root filesystem
     ROOT_LOOP="$(losetup -o $((264192 * 512)) -f --show ${BASEDIR}/${IMAGE})"
-
-    # make filesystem
-    mkfs.vfat -n PC_BOOT -S 512 -s 16 -v "${BOOT_LOOP}"
-    if [ "${FS}" == "ext4" ]; then
-        mkfs.ext4 -O ^has_journal -b 4096 -L PC_ROOT -U ${FS_ROOT_UUID} -m 0 "${ROOT_LOOP}" 
-    else
-        mkfs.f2fs -l PC_ROOT -o 1 "${ROOT_LOOP}"
-    fi
-
+    mkfs.ext4 -O ^has_journal -b 4096 -L PC_ROOT -U ${FS_ROOT_UUID} -m 0 "${ROOT_LOOP}" 
     MOUNTDIR="${BUILDDIR}/mount"
     mkdir -p "${MOUNTDIR}"
     mount "${ROOT_LOOP}" "${MOUNTDIR}"
     rsync -a "$R/" "${MOUNTDIR}/"
     umount -l "${MOUNTDIR}"
     losetup -d "${ROOT_LOOP}"
-    losetup -d "${BOOT_LOOP}"
-
-    # Copying the original bootloader
-    TOP_LOOP="$(losetup -o 0 --sizelimit $((264192 * 512)) -f --show ${BASEDIR}/${IMAGE})"
-    dd if=${PWD}/../CAPTURED-BOOT/ODROID/BOOTLOADER-C2-3.14.79-102-20170125.img of=${TOP_LOOP} bs=512 count=264192
-    losetup -d "${TOP_LOOP}"
 }
 
 function make_tarball() {
