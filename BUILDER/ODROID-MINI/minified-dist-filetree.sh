@@ -220,7 +220,7 @@ function create_groups() {
 # USAGE:
 #   adduser.local USER UID GID HOME
 
-# Add user to the Raspberry Pi specific groups
+# Add user to general groups
 usermod -a -G adm,input,video $1
 EOM
     chmod +x $R/usr/local/sbin/adduser.local
@@ -240,14 +240,20 @@ function create_user() {
 }
 
 function setup_odroid_specifics() {
-    # firmware
+    # /lib/firmware/3.14.79-102
     mkdir -p $R/lib/firmware/
     tar -xzf ../CAPTURED-BOOT/ODROID/odroid-firmware-3.14.79-102.tar.gz -C $R/lib/firmware/
-    # modules
+
+    # /lib/modules/3.14.79-102
     mkdir -p $R/lib/modules/
     tar -xzf ../CAPTURED-BOOT/ODROID/odroid-modules-3.14.79-102.tar.gz -C $R/lib/modules/
-    # boot
+    
+    # /boot directory
     tar -xzf ../CAPTURED-BOOT/ODROID/BOOTDIR-C2-3.14.79-102-20170125.tar.gz -C $R/
+
+    cat <<EOM >$R/etc/fstab
+UUID=${FS_ROOT_UUID} / ext4 errors=remount-ro,noatime 0 1
+EOM
 }
 
 function apt_clean() {

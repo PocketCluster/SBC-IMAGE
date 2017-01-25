@@ -15,11 +15,15 @@
 8. [ ] make RPI image dependencies local, especially `rpi-update`.  
 9. [ ] update Odroid `/etc/fstab` in image construction.  
 10. [ ] setup swap space according to memory size. Can be easily done based on the device model.  
-11. [ ] setup auto partition/format/swap-setup from the first boot.  
+11. [ ] setup auto partition/format/swap-setup from the first boot. Use **`sfdisk`**.  
   - Look how Hypriot has done in [`/etc/firstboot.d/10-resize-rootdisk`](./DOCUMENT/10-resize-rootdisk.sh)  
   - Look how dhyve-os has done in [`/etc/init.d/S3automount`](./DOCUMENT/S03automount.sh)
-12. [ ] `apt-mark hold u-boot-tools` so u-boot won't destroy bootloader.
-13. [ ] `apt-get install libpam-systemd dbus` to prevent ssh session hang.
+  - Look how Odroid-Mate has done in [`/aafirstboot`](./DOCUMENT/first_boot_odroid_mate.sh)
+12. [x] `apt-mark hold u-boot-tools` so u-boot won't destroy bootloader.
+13. [x] `apt-get install libpam-systemd dbus` to prevent ssh session hang.
 14. [ ] `sync` disks before quit.
-15. [ ] `apt-get install apparmor` for proper apparmor parser.
-16. [ ] `sysctl -w kernel/keys/root_maxkeys=1000000`
+15. [x] `apt-get install apparmor` for proper apparmor parser.
+16. [x] `sysctl -w kernel/keys/root_maxkeys=1000000`
+17. [ ] Base add user policy to not include `docker`
+18. [ ] Remove `pocket` user from production release
+19. [ ] Check to modify `/etc/hostname` and `/etc/hosts` together
