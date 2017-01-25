@@ -30,6 +30,9 @@ else
     exit 1
 fi
 
+TARBALL="${DIST_NAME}-devel-arm64-rootfs-${RELEASE}.tar.bz2"
+IMAGE="${DIST_NAME}-devel-arm64-odroid-${RELEASE}.img"
+
 if [ $(id -u) -ne 0 ]; then
     echo "ERROR! Must be root."
     exit 1
@@ -97,5 +100,13 @@ EOM
     losetup -d "${TOP_LOOP}"
 }
 
+function make_tarball() {
+    if [ ${MAKE_TARBALL} -eq 1 ]; then
+        rm -f "${BASEDIR}/${TARBALL}" || true
+        tar -cSf "${BASEDIR}/${TARBALL}" $R
+    fi
+}
+
 R=${DEVICE_R}
 make_odroidc2_image ${FS_TYPE} 0
+make_tarball

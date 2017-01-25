@@ -40,8 +40,6 @@ FS_SIZE=4
 # - 1 make a generic rootfs tarball
 MAKE_TARBALL=1
 
-TARBALL="${FLAVOUR}-${VERSION}${QUALITY}-arm64-rootfs.tar.bz2"
-IMAGE="${DIST_NAME}-arm64-odroid-${RELEASE}${QUALITY}.img"
 BASEDIR=${PWD}/C2/${RELEASE}
 BUILDDIR=${BASEDIR}/${FLAVOUR}
 BASE_R=${BASEDIR}/base

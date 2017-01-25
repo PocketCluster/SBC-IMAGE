@@ -30,6 +30,9 @@ else
     exit 1
 fi
 
+TARBALL="${DIST_NAME}-dist-arm64-rootfs-${RELEASE}.tar.bz2"
+IMAGE="${DIST_NAME}-dist-arm64-odroid-${RELEASE}.img"
+
 if [ $(id -u) -ne 0 ]; then
     echo "ERROR! Must be root."
     exit 1
