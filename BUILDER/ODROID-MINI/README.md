@@ -33,6 +33,15 @@ Make iso image with ripped off bootloader from official image `ubuntu64-16.04lts
 
 1. Get Clean Boot
 
+  > **Take bootloader from image. Do this as booted image autoresize partitions**
+  
+  ```sh  
+  # extract the boot sector
+  dd if=./ubuntu64-16.04lts-mate-odroid-c2-20170106.img of="./BOOTLOADER-C2-3.14.79-102-20170125.img" bs=512 count=264192
+  ```
+
+  > Take bootloader from booted disk
+
   ```sh
   #remove any older files from /boot
   
@@ -44,7 +53,7 @@ Make iso image with ripped off bootloader from official image `ubuntu64-16.04lts
   # extract the boot sector
   dd if=/dev/mmcblk0 of="./BOOTLOADER-C2-$(uname -r)-20170125.img" bs=512 count=264192
   ```
-2. Capture vmlinuz
+2. Capture vmlinuz (from this point onward, we can do this from mounted filesystem (either SD Card or img mount)
 
   ```sh
   tar ./BOOTDIR-C2-$(uname -r)-20170125.tar.gz /boot/
