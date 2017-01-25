@@ -294,7 +294,7 @@ function setup_odroid_specifics() {
     tar -xzf ../CAPTURED-BOOT/ODROID/BOOTDIR-C2-3.14.79-102-20170125.tar.gz -C $R/
 
     cat <<EOM >$R/etc/fstab
-    UUID=${FS_ROOT_UUID} / ext4 errors=remount-ro,noatime 0 1
+UUID=${FS_ROOT_UUID} / ext4 errors=remount-ro,noatime 0 1
 EOM
 }
 
