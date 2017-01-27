@@ -1,0 +1,388 @@
+language-pack-en-base
+  PreDepends: dpkg
+  Depends: locales
+  Depends: language-pack-en
+  Conflicts: language-pack-en
+  Replaces: language-pack-en
+  Replaces: language-pack-en-base
+  Replaces: language-pack-gnome-en
+  Replaces: language-pack-gnome-en-base
+  Replaces: language-pack-kde-en
+  Replaces: <language-pack-kde-en-base>
+ca-certificates
+  Depends: openssl
+ |Depends: debconf
+  Depends: <debconf-2.0>
+    cdebconf
+    debconf
+  Breaks: ca-certificates-java
+  Enhances: openssl
+isc-dhcp-client
+  Depends: libc6
+  Depends: libdns-export162
+  Depends: libisc-export160
+  Depends: debianutils
+  Depends: iproute2
+  Recommends: isc-dhcp-common
+  Suggests: resolvconf
+    openresolv
+  Suggests: avahi-autoipd
+  Suggests: isc-dhcp-client-ddns
+  Suggests: apparmor
+udev
+  PreDepends: dpkg
+  Depends: libacl1
+  Depends: libblkid1
+  Depends: libc6
+  Depends: libkmod2
+  Depends: libselinux1
+  Depends: lsb-base
+  Depends: adduser
+  Depends: libudev1
+  Depends: util-linux
+  Depends: procps
+  Breaks: bash-completion
+  Breaks: consolekit
+  Breaks: ifupdown
+  Breaks: kmod
+  Breaks: lvm2
+  Breaks: mdadm
+  Breaks: plymouth
+  Breaks: systemd
+  Replaces: bash-completion
+  Replaces: systemd
+netbase
+  Depends: lsb-base
+  Breaks: ifupdown
+  Recommends: ifupdown
+    ifupdown2
+    netscript-2.4
+ifupdown
+  Depends: libc6
+  Depends: init-system-helpers
+  Depends: lsb-base
+  Depends: adduser
+  Depends: iproute2
+  Breaks: systemd
+ |Recommends: isc-dhcp-client
+  Recommends: <dhcp-client>
+    dhcpcd5
+    pump
+    isc-dhcp-client
+  Suggests: ppp
+  Suggests: rdnssd
+  Replaces: systemd
+iproute
+  Depends: iproute2
+iputils-ping
+  Depends: libc6
+  Depends: libcap2
+  Depends: libgnutls-openssl27
+  Recommends: libcap2-bin
+net-tools
+  Depends: libc6
+  Conflicts: <ja-trans>
+  Replaces: <ja-trans>
+  Replaces: netbase
+ntpdate
+  PreDepends: dpkg
+  Depends: netbase
+  Depends: libc6
+  Depends: libssl1.0.0
+  Breaks: <dhcp3-client>
+ntp
+  PreDepends: dpkg
+  Depends: adduser
+  Depends: lsb-base
+  Depends: netbase
+  Depends: libc6
+  Depends: libcap2
+  Depends: libedit2
+  Depends: libopts25
+  Depends: libssl1.0.0
+  Conflicts: apparmor
+  Conflicts: apparmor-profiles
+  Breaks: <dhcp3-client>
+  Recommends: perl
+  Suggests: ntp-doc
+  Suggests: apparmor
+  Replaces: apparmor
+  Replaces: apparmor-profiles
+tzdata
+ |Depends: debconf
+  Depends: <debconf-2.0>
+    cdebconf
+    debconf
+  Replaces: <libc0.1>
+  Replaces: <libc0.3>
+  Replaces: libc6
+  Replaces: <libc6.1>
+dialog
+  Depends: libc6
+  Depends: libncursesw5
+  Depends: libtinfo5
+  Depends: debianutils
+resolvconf
+  Depends: ifupdown
+    ifupdown2
+    netscript-2.4
+  Depends: lsb-base
+ |Depends: debconf
+  Depends: <debconf-2.0>
+    cdebconf
+    debconf
+  Depends: init-system-helpers
+  Breaks: <dhcp3-client>
+  Breaks: dnscache-run
+  Breaks: sysv-rc
+  Enhances: <dhcpcd>
+  Enhances: dnsmasq
+  Enhances: ifupdown
+    ifupdown2
+    netscript-2.4
+  Enhances: isc-dhcp-client
+  Enhances: libc6
+  Enhances: network-manager
+  Enhances: nscd
+    unscd
+  Enhances: pdnsd
+  Enhances: ppp
+  Enhances: pump
+  Enhances: udhcpc
+console-common
+ |PreDepends: debconf
+  PreDepends: <debconf-2.0>
+    cdebconf
+    debconf
+ |Depends: debconf
+  Depends: <debconf-2.0>
+    cdebconf
+    debconf
+  Depends: debianutils
+  Depends: console-data
+  Depends: kbd
+  Depends: lsb-base
+console-data
+ |Depends: debconf
+  Depends: <debconf-2.0>
+    cdebconf
+    debconf
+  Conflicts: <console-tools-data>
+  Conflicts: kbd
+  Conflicts: <kbd-data>
+  Recommends: kbd
+  Recommends: console-common
+  Suggests: unicode-data
+  Replaces: <console-tools-data>
+    console-data
+console-setup
+  Depends: debconf
+  Depends: console-setup-linux
+  Depends: xkb-data
+  Depends: keyboard-configuration
+ |Depends: initramfs-tools
+  Depends: <linux-initramfs-tool>
+    dracut
+    tiny-initramfs
+    initramfs-tools
+  Depends: lsb-base
+  Conflicts: console-setup-mini
+  Breaks: lsb
+  Breaks: lsb-base
+  Breaks: lsb-core
+  Suggests: locales
+    locales-all
+keyboard-configuration
+  Depends: debconf
+  Depends: lsb-base
+  Depends: liblocale-gettext-perl
+  Depends: initscripts
+  Breaks: console-setup
+  Breaks: console-setup-mini
+  Replaces: console-setup
+  Replaces: console-setup-mini
+libpam-systemd
+  Depends: libc6
+  Depends: libpam0g
+  Depends: libselinux1
+  Depends: systemd
+  Depends: libpam-runtime
+  Depends: dbus
+ |Depends: systemd-shim
+  Depends: systemd-sysv
+dbus
+  Depends: libapparmor1
+  Depends: libaudit1
+  Depends: libc6
+  Depends: libcap-ng0
+  Depends: libdbus-1-3
+  Depends: libexpat1
+  Depends: libselinux1
+  Depends: libsystemd0
+  Depends: lsb-base
+  Depends: adduser
+ |Suggests: dbus-user-session
+  Suggests: dbus-x11
+apparmor
+  Depends: libc6
+ |Depends: debconf
+  Depends: <debconf-2.0>
+    cdebconf
+    debconf
+  Depends: lsb-base
+  Depends: <python3:any>
+    python3
+  Depends: libapparmor-perl
+  Depends: debconf
+ |Depends: initramfs-tools
+  Depends: <linux-initramfs-tool>
+    dracut
+    tiny-initramfs
+    initramfs-tools
+  Breaks: apparmor-easyprof-ubuntu
+  Breaks: apparmor-utils
+  Breaks: libapache2-mod-apparmor
+  Breaks: libvirt-bin
+  Breaks: lightdm
+  Breaks: lxc
+  Breaks: rsyslog
+  Suggests: apparmor-profiles
+  Suggests: apparmor-profiles-extra
+  Suggests: apparmor-docs
+  Suggests: apparmor-utils
+  Replaces: <apparmor-parser>
+  Replaces: apparmor-utils
+  Replaces: libapache2-mod-apparmor
+adduser
+  Depends: perl-base
+  Depends: passwd
+ |Depends: debconf
+  Depends: <debconf-2.0>
+    cdebconf
+    debconf
+  Suggests: liblocale-gettext-perl
+  Suggests: <perl-modules>
+    perl-modules-5.22
+  Suggests: ecryptfs-utils
+  Replaces: manpages-it
+  Replaces: manpages-pl
+iptables
+  Depends: libxtables11
+  Depends: libc6
+  Depends: libnfnetlink0
+init-system-helpers
+  Depends: perl-base
+  Conflicts: <file-rc>
+  Conflicts: <openrc>
+  Breaks: systemd
+  Breaks: sysvinit-utils
+  Replaces: sysv-rc
+  Replaces: sysvinit-utils
+lsb-base
+  Breaks: upstart
+  Replaces: upstart
+libapparmor1
+  Depends: libc6
+libc6
+  Depends: libgcc1
+  Breaks: <hurd>
+  Breaks: libtirpc1
+  Breaks: locales
+  Breaks: locales-all
+  Breaks: nscd
+  Suggests: glibc-doc
+ |Suggests: debconf
+  Suggests: <debconf-2.0>
+    cdebconf
+    debconf
+  Suggests: locales
+    locales-all
+libdevmapper1.02.1
+  Depends: libc6
+  Depends: libselinux1
+  Depends: libudev1
+  Conflicts: <libdevmapper1.02>
+  Breaks: liblvm2app2.2
+  Breaks: lvm2
+  Recommends: dmsetup
+cgroupfs-mount
+  Depends: lsb-base
+  Suggests: mountall
+cgroup-lite
+  Depends: lsb-base
+  Depends: mountall
+  Conflicts: cgroup-bin
+  Breaks: systemd-shim
+git
+  Depends: libc6
+  Depends: libcurl3-gnutls
+  Depends: libexpat1
+  Depends: libpcre3
+  Depends: zlib1g
+  Depends: <perl-modules>
+    perl-modules-5.22
+  Depends: liberror-perl
+  Depends: git-man
+  Depends: git-man
+  Breaks: bash-completion
+  Breaks: <cogito>
+  Breaks: git-buildpackage
+  Breaks: git-core
+  Breaks: <gitosis>
+  Breaks: gitpkg
+  Breaks: gitweb
+  Breaks: guilt
+  Breaks: stgit
+  Breaks: stgit-contrib
+  Recommends: patch
+  Recommends: less
+  Recommends: rsync
+  Recommends: <ssh-client>
+    openssh-client
+  Suggests: gettext-base
+ |Suggests: git-daemon-run
+  Suggests: git-daemon-sysvinit
+  Suggests: git-doc
+  Suggests: git-el
+  Suggests: git-email
+  Suggests: git-gui
+  Suggests: gitk
+  Suggests: gitweb
+  Suggests: git-arch
+  Suggests: git-cvs
+  Suggests: git-mediawiki
+  Suggests: git-svn
+  Replaces: git-core
+  Replaces: gitweb
+xz-utils
+  Depends: libc6
+  Depends: liblzma5
+  Conflicts: lzma
+  Conflicts: <xz-lzma>
+  Breaks: lzip
+  Replaces: lzip
+  Replaces: <xz-lzma>
+btrfs-tools
+  Depends: e2fslibs
+  Depends: libblkid1
+  Depends: libc6
+  Depends: libcomerr2
+  Depends: liblzo2-2
+  Depends: libuuid1
+  Depends: zlib1g
+apparmor-profiles
+  Depends: apparmor
+apparmor-utils
+  Depends: apparmor
+  Depends: libapparmor-perl
+  Depends: python3-apparmor
+  Depends: <python3:any>
+    python3
+  Suggests: apparmor-docs
+  Suggests: vim-addon-manager
+bridge-utils
+  Depends: libc6
+  Conflicts: ifupdown
+  Suggests: ifupdown
+    ifupdown2
+    netscript-2.4
