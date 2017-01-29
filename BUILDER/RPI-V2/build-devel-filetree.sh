@@ -368,8 +368,9 @@ function clean_up() {
     rm -f $R/boot/.firmware_revision || true
     rm -rf $R/boot.bak || true
 
-    # non-existent at this point
-    #rm -rf $R/lib/modules/4.1.7* || true
+    # Remove old modules
+    echo "!!! ALWAYS CHECK IF OLD MODULE IS REMAINED !!!"
+    rm -rf $R/lib/modules/4.1.19* || true
     rm -rf $R/lib/modules.bak || true
 
     # Potentially sensitive.
