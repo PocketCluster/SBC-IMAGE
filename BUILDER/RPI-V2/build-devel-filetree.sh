@@ -298,7 +298,7 @@ function setup_raspberry_specifics() {
 
     # Kernel installation
     chroot $R apt-get -y install raspberrypi-bootloader
-    chroot $R apt-get -y install linux-firmware linux-firmware-nonfree
+    chroot $R apt-get -y install linux-firmware 
     chroot $R apt-get -y install raspberrypi-firmware
 
     # Firmware, Modules, Kernel 4.4.22-v7+
