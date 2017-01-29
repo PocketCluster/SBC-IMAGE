@@ -35,6 +35,48 @@ if [ $(id -u) -ne 0 ]; then
     exit 1
 fi
 
+# Base debootstrap
+function bootstrap() {
+    # Required tools
+    apt-get -y install binfmt-support debootstrap f2fs-tools qemu-user-static rsync ubuntu-keyring wget whois
+
+    # Use the same base system for all flavours.
+    if [ ! -f "${R}/tmp/.bootstrap" ]; then
+        if [ "${ARCH}" == ${DEVICE_ARCH} ]; then
+            debootstrap --variant=minbase --verbose $RELEASE $R http://ports.ubuntu.com/
+        else
+            qemu-debootstrap --variant=minbase --verbose --arch=arm64 $RELEASE $R http://ports.ubuntu.com/
+        fi
+        touch "$R/tmp/.bootstrap"
+    fi
+}
+
+function check_crossbuild_req() {
+    # Required tools
+    if [ ${ARCH} != ${DEVICE_ARCH} ]; then
+        apt-get -y install binfmt-support debootstrap f2fs-tools qemu-user-static rsync ubuntu-keyring wget whois
+        update-binfmts --enable qemu-${DEVICE_ARCH}
+    fi
+}
+
+function unarchive_base_image() {
+    local BASE_IMAGE="${RELEASE}-base-armhf.tar.gz"
+    local TARGET="${1}"
+    if [ ! -d "${TARGET}" ]; then
+        mkdir -p "${TARGET}"
+    fi
+    tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET}
+}
+
+function sync_to() {
+    local TARGET="${1}"
+    if [ ! -d "${TARGET}" ]; then
+        mkdir -p "${TARGET}"
+    fi
+    #rsync -a --progress --delete ${R}/ ${TARGET}/
+    rsync -a --delete ${R}/ ${TARGET}/
+}
+
 # Mount host system
 function mount_system() {
     # In case this is a re-run move the cofi preload out of the way
@@ -45,57 +87,44 @@ function mount_system() {
     mount -t sysfs none $R/sys
     mount -o bind /dev $R/dev
     mount -o bind /dev/pts $R/dev/pts
+}
+
+function configure_network() {
+    # Set up hosts
+    echo ${DIST_HOSTNAME} >$R/etc/hostname
     echo "nameserver 8.8.8.8" > $R/etc/resolv.conf
-}
+    cat <<EOM >$R/etc/hosts
+127.0.0.1       localhost
+# ::1             localhost ip6-localhost ip6-loopback
+# ff02::1         ip6-allnodes
+# ff02::2         ip6-allrouters
 
-# Unmount host system
-function umount_system() {
-    umount -l $R/sys
-    umount -l $R/proc
-    umount -l $R/dev/pts
-    umount -l $R/dev
-    echo "" > $R/etc/resolv.conf
-}
-
-function sync_to() {
-    local TARGET="${1}"
-    if [ ! -d "${TARGET}" ]; then
-        mkdir -p "${TARGET}"
-    fi
-    # rsync -a --progress --delete ${R}/ ${TARGET}/
-    rsync -a --delete ${R}/ ${TARGET}/
-}
-
-function generate_locale() {
-    # Setup default locale
-    cat <<EOM >$R/etc/default/locale
-LANG="en_US.UTF-8"
-LANGUAGE="en_US.UTF-8"
-LC_NUMERIC="en_US.UTF-8"
-LC_TIME="en_US.UTF-8"
-LC_MONETARY="en_US.UTF-8"
-LC_PAPER="en_US.UTF-8"
-LC_NAME="en_US.UTF-8"
-LC_ADDRESS="en_US.UTF-8"
-LC_TELEPHONE="en_US.UTF-8"
-LC_MEASUREMENT="en_US.UTF-8"
-LC_IDENTIFICATION="en_US.UTF-8"
-LC_CTYPE="UTF-8"
-LC_COLLATE="en_US.UTF-8"
-LC_ALL="en_US.UTF-8"
+127.0.1.1       ${DIST_HOSTNAME}
 EOM
 
-    for LOCALE in $(chroot $R locale | cut -d'=' -f2 | grep -v : | sed 's/"//g' | uniq); do
-        if [ -n "${LOCALE}" ]; then
-            chroot $R locale-gen $LOCALE
-            chroot $R update-locale LC_ALL=$LOCALE
-        fi
-    done
-    chroot $R dpkg-reconfigure --frontend=noninteractive locales
+    mkdir -p $R/etc/network
+    chroot $R chown -R root:root /etc/network
+
+    cat <<EOM >$R/etc/network/interfaces
+# interfaces(5) file used by ifup(8) and ifdown(8)
+# Include files from /etc/network/interfaces.d:
+source-directory /etc/network/interfaces.d
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+EOM
 }
 
 # Set up initial sources.list
-function apt_sources() {
+function apt_setup() {
+    # tell APT not to install recommends & suggestion
+    if [ ! -d "${R}/etc/apt/apt.conf.d/" ]; then
+        mkdir ${R}/etc/apt/apt.conf.d/
+    fi
     cat <<EOM >$R/etc/apt/sources.list
 deb http://ports.ubuntu.com/ ${RELEASE} main restricted universe multiverse
 deb-src http://ports.ubuntu.com/ ${RELEASE} main restricted universe multiverse
@@ -109,64 +138,39 @@ deb-src http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe mu
 deb http://ports.ubuntu.com/ ${RELEASE}-backports main restricted universe multiverse
 deb-src http://ports.ubuntu.com/ ${RELEASE}-backports main restricted universe multiverse
 EOM
-
-    cat <<EOM >$R/etc/apt/apt.conf.d/50raspi
+    cat <<EOM >${R}/etc/apt/apt.conf.d/50singleboards
 # Never use pdiffs, current implementation is very slow on low-powered devices
 Acquire::PDiffs "0";
 EOM
+    cat <<EOM >${R}/etc/apt/apt.conf
+# APT::Install-Recommends "false";
+APT::Install-Suggests "false";
+EOM
 
-}
-
-function apt_update_only() {
     chroot $R apt-get update
 }
 
-function apt_clean() {
-    chroot $R apt-get -y autoremove
-    chroot $R apt-get clean
-}
+# Install Ubuntu Development
+function ubuntu_development() {
+    # only the essentials
+    chroot $R apt-get -y install dialog language-pack-en-base software-properties-common udev wget sudo whois less f2fs-tools vim nano htop rsync python-pip dosfstools lsof
+    chroot $R apt-get -y install isc-dhcp-client netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata build-essential
+    # Config timezone, Keyboard, Console
+    chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
+    chroot $R dpkg-reconfigure --frontend=noninteractive debconf
 
-function create_groups() {
-#    chroot $R groupadd -f --system gpio
-#    chroot $R groupadd -f --system i2c
-    chroot $R groupadd -f --system input
-#    chroot $R groupadd -f --system spi
+    # console & keyboard
+    chroot $R apt-get -y install console-common console-data console-setup keyboard-configuration
+    chroot $R dpkg-reconfigure --frontend=noninteractive keyboard-configuration
+    chroot $R dpkg-reconfigure --frontend=noninteractive console-setup
 
-    # Create adduser hook
-# 2016-04-03 original line was following
-# usermod -a -G adm,gpio,i2c,input,spi,video $1
+    # system hang prevention
+    chroot $R apt-get -y install libpam-systemd dbus
 
-    cat <<'EOM' >$R/usr/local/sbin/adduser.local
-#!/bin/sh
-# This script is executed as the final step when calling `adduser`
-# USAGE:
-#   adduser.local USER UID GID HOME
-
-# Add user to the Raspberry Pi specific groups
-usermod -a -G adm,input $1
-EOM
-    chmod +x $R/usr/local/sbin/adduser.local
-}
-
-# Create default user
-function create_user() {
-    local DATE=$(date +%m%H%M%S)
-    local PASSWD=$(mkpasswd -m sha-512 ${USERNAME} ${DATE})
-
-    if [ ${OEM_CONFIG} -eq 1 ]; then
-        chroot $R addgroup --gid 29999 oem
-        chroot $R adduser --gecos "OEM Configuration (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${USERNAME}
-    else
-        chroot $R adduser --gecos "${FLAVOUR_NAME}" --add_extra_groups --disabled-password ${USERNAME}
-    fi
-    chroot $R usermod -a -G sudo -p ${PASSWD} ${USERNAME}
-}
-
-# Prepare oem-config for first boot.
-function prepare_oem_config() {
-    if [ ${OEM_CONFIG} -eq 1 ]; then
-        chroot $R /bin/systemctl set-default oem-config.target
-    fi
+    # Python
+    chroot $R apt-get -y install python-minimal python3-minimal
+    chroot $R apt-get -y install python-dev python3-dev
+    chroot $R apt-get -y install python-pip python3-pip
 }
 
 function configure_ssh() {
@@ -199,100 +203,123 @@ EOM
     chroot $R ln -s /etc/systemd/system/sshdgenkeys.service /etc/systemd/system/ssh.service.wants
 }
 
-function configure_network() {
-    # Set up hosts
-    echo ${FLAVOUR} >$R/etc/hostname
-    cat <<EOM >$R/etc/hosts
-127.0.0.1       localhost
-# ::1             localhost ip6-localhost ip6-loopback
-# ff02::1         ip6-allnodes
-# ff02::2         ip6-allrouters
-
-127.0.1.1       ${FLAVOUR}
+function generate_locale() {
+    # Setup default locale
+    cat <<EOM >$R/etc/default/locale
+LANG="en_US.UTF-8"
+LANGUAGE="en_US.UTF-8"
+LC_NUMERIC="en_US.UTF-8"
+LC_TIME="en_US.UTF-8"
+LC_MONETARY="en_US.UTF-8"
+LC_PAPER="en_US.UTF-8"
+LC_NAME="en_US.UTF-8"
+LC_ADDRESS="en_US.UTF-8"
+LC_TELEPHONE="en_US.UTF-8"
+LC_MEASUREMENT="en_US.UTF-8"
+LC_IDENTIFICATION="en_US.UTF-8"
+LC_CTYPE="UTF-8"
+LC_COLLATE="en_US.UTF-8"
+LC_ALL="en_US.UTF-8"
 EOM
 
-    # Set up interfaces
-    if [ "${FLAVOUR}" != "ubuntu-minimal" ] && [ "${FLAVOUR}" != "ubuntu-standard" ]; then
-        cat <<EOM >$R/etc/network/interfaces
-# interfaces(5) file used by ifup(8) and ifdown(8)
-# Include files from /etc/network/interfaces.d:
-source-directory /etc/network/interfaces.d
-
-# The loopback network interface
-auto lo
-iface lo inet loopback
-EOM
-    else
-        cat <<EOM >$R/etc/network/interfaces
-# interfaces(5) file used by ifup(8) and ifdown(8)
-# Include files from /etc/network/interfaces.d:
-source-directory /etc/network/interfaces.d
-
-# The loopback network interface
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet dhcp
-EOM
-    fi
+    for LOCALE in $(chroot $R locale | cut -d'=' -f2 | grep -v : | sed 's/"//g' | uniq); do
+        if [ -n "${LOCALE}" ]; then
+            chroot $R locale-gen $LOCALE
+            chroot $R update-locale LC_ALL=$LOCALE
+        fi
+    done
+    chroot $R dpkg-reconfigure --frontend=noninteractive locales
 }
 
-function setup_developer_package() {
-    chroot $R apt-get -y install sudo whois
+function docker_setup() {
+    # docker dependencies
+    chroot $R apt-get -y install apparmor adduser iptables init-system-helpers lsb-base libapparmor1 libc6 libdevmapper1.02.1 
+    # docker recommends
+    chroot $R apt-get -y install cgroupfs-mount cgroup-lite git xz-utils
+    # docker suggestion
+    chroot $R apt-get -y install btrfs-tools
+    # docker possible utility
+    chroot $R apt-get -y install apparmor-profiles apparmor-utils bridge-utils
+
+    # aufs is blocked for now as not in mainstream yet 4.9 maybe?
+    # chroot $R apt-get -y install aufs-tools
+
+    # install docker
+    mkdir -p $R/tmp/
+    cp ${PWD}/docker.io_1.10.3-0ubuntu6_armhf.deb $R/tmp
+    chroot $R dpkg -i /tmp/docker.io_1.10.3-0ubuntu6_armhf.deb
+    rm -rf $R/tmp/docker.io_1.10.3-0ubuntu6_armhf.deb || true
+
+    echo "kernel.keys.root_maxkeys = 1000000" >> $R/etc/sysctl.conf
+    chroot $R apt-mark hold u-boot-tools docker.io
 }
 
-function setup_kernel_from_remote() {
+function create_groups() {
+    chroot $R groupadd -f --system input
+    cat <<'EOM' >$R/usr/local/sbin/adduser.local
+#!/bin/sh
+# This script is executed as the final step when calling `adduser`
+# USAGE:
+#   adduser.local USER UID GID HOME
+
+# Add user to general groups
+usermod -a -G adm,input,video $1
+EOM
+    chmod +x $R/usr/local/sbin/adduser.local
+}
+
+# in devel file tree docker group has to be added
+function create_user() {
+    local DIST_USERNAME="pocket"
+    local DIST_USERGROUP="pocket"
+    local DATE=$(date +%m%H%M%S)
+    local PASSWD=$(mkpasswd -m sha-512 ${DIST_USERNAME} ${DATE})
+
+    chroot $R addgroup --gid 29999 ${DIST_USERGROUP}
+    chroot $R adduser --gecos "PocketCluster (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
+    chroot $R usermod -a -G sudo -p ${PASSWD} ${DIST_USERGROUP} docker
+
+    echo "pocket ALL=(ALL) NOPASSWD:ALL" > $R/etc/sudoers.d/pocket
+}
+
+function setup_raspberry_specifics() {
     local FS="${1}"
     if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
         echo "ERROR! Unsupport filesystem requested. Exitting."
         exit 1
     fi
 
-    # gdebi-core used for installing copies-and-fills and omxplayer
-    chroot $R apt-get -y install gdebi-core
-    local COFI="http://archive.raspberrypi.org/debian/pool/main/r/raspi-copies-and-fills/raspi-copies-and-fills_0.5-1_armhf.deb"
-
-    # Install the RPi PPA
+    # Hardware - Create a fake HW clock and add rng-tools These are coming from official repo
+    chroot $R apt-get -y install fake-hwclock rng-tools
+    
+    chroot $R apt install -y curl binutils
     chroot $R apt-add-repository -y ppa:ubuntu-pi-flavour-makers/ppa
     chroot $R apt-get update
 
-    # Firmware Kernel installation
-    chroot $R apt-get -y install raspberrypi-bootloader rpi-update
-    chroot $R ROOT_PATH="${R}/" BOOT_PATH="${R}/boot/firmware" rpi-update 6d158adcc0cfa03afa17665715706e6e5f0750d2
+    # Kernel installation
+    chroot $R apt-get -y install raspberrypi-bootloader
+    chroot $R apt-get -y install linux-firmware linux-firmware-nonfree
+    chroot $R apt-get -y install raspberrypi-firmware
 
-    # Hardware - Create a fake HW clock and add rng-tools
-    chroot $R apt-get -y install fake-hwclock rng-tools
+    # Firmware, Modules, Kernel 4.4.22-v7+
+    wget -c https://raw.githubusercontent.com/Hexxeh/rpi-update/master/rpi-update -O $R/usr/bin/rpi-update
+    chmod 755 $R/usr/bin/rpi-update
+    chroot $R rpi-update d26c39bd353eb0ebbc7db3546277083eac4aa3bd
 
-    # 2016-05-15 We do not need this. Rather, stable kernel is more necessary.
-    # Load sound module on boot and enable HW random number generator
-#    cat <<EOM >$R/etc/modules-load.d/rpi2.conf
-#bcm2708_rng
-#EOM
+    # Very minimal boot config
+    #wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
+    cp ${PWD}/config.txt $R/boot/config.txt
+    echo "net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash" > $R/boot/cmdline.txt
 
     # Blacklist platform modules not applicable to the RPi2
     cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
-blacklist snd_bcm2835
 blacklist snd_soc_pcm512x_i2c
 blacklist snd_soc_pcm512x
 blacklist snd_soc_tas5713
 blacklist snd_soc_wm8804
+blacklist brcmfmac
+blacklist brcmutil
 EOM
-
-    # Disable TLP
-    if [ -f $R/etc/default/tlp ]; then
-        sed -i s'/TLP_ENABLE=1/TLP_ENABLE=0/' $R/etc/default/tlp
-    fi
-
-    # udev rules
-    printf 'SUBSYSTEM=="input", GROUP="input", MODE="0660"\n' >> $R/etc/udev/rules.d/99-com.rules
-
-    # copies-and-fills
-    wget -c "${COFI}" -O $R/tmp/cofi.deb
-    chroot $R gdebi -n /tmp/cofi.deb
-
-    # Disabled cofi so it doesn't segfault when building via qemu-user-static
-    mv -v $R/etc/ld.so.preload $R/etc/ld.so.preload.disable
 
     # Set up fstab
     cat <<EOM >$R/etc/fstab
@@ -301,207 +328,18 @@ proc            /proc           proc    defaults          0       0
 /dev/mmcblk0p1  /boot/          vfat    defaults          0       2
 EOM
 
-    # Set up firmware config
-    wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
-    if [ "${FLAVOUR}" == "ubuntu-minimal" ] || [ "${FLAVOUR}" == "ubuntu-standard" ]; then
-        echo "net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash" > $R/boot/cmdline.txt
-    else
-        echo "dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash" > $R/boot/cmdline.txt
-        sed -i 's/#framebuffer_depth=16/framebuffer_depth=32/' $R/boot/config.txt
-        sed -i 's/#framebuffer_ignore_alpha=0/framebuffer_ignore_alpha=1/' $R/boot/config.txt
-    fi
+    # udev rules
+    printf 'SUBSYSTEM=="vchiq", GROUP="video", MODE="0660"\n' > $R/etc/udev/rules.d/10-local-rpi.rules
+    printf 'SUBSYSTEM=="input", GROUP="input", MODE="0660"\n' >> $R/etc/udev/rules.d/99-com.rules
 
     # Save the clock
     chroot $R fake-hwclock save
 }
 
-# this is from Ubuntu Raspberry PI page. Does not work
-function setup_alternative_kernel() {
-    local FS="${1}"
-    if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
-        echo "ERROR! Unsupport filesystem requested. Exitting."
-        exit 1
-    fi
-
-    # Install the RPi PPA
-    chroot $R apt-add-repository -y ppa:ubuntu-raspi2/ppa-rpi3
-    chroot $R apt-get update
-
-    # Firmware Kernel installation
-    chroot $R apt-get -y install u-boot-rpi linux-raspi2 linux-firmware-raspi2 flash-kernel
-    # chroot $R apt-get -y install linux-firmware 
-
-    # gdebi-core used for installing copies-and-fills and omxplayer
-    chroot $R apt-get -y install gdebi-core
-    local COFI="http://archive.raspberrypi.org/debian/pool/main/r/raspi-copies-and-fills/raspi-copies-and-fills_0.5-1_armhf.deb"
-
-    # Install the RPI2 DT-compatible u-boot image.
-    wget -O $R/tmp/mkknlimg https://raw.githubusercontent.com/raspberrypi/tools/master/mkimage/mkknlimg
-    chmod 0755 $R/tmp/mkknlimg 
-    $R/tmp/mkknlimg --dtok $R/usr/lib/u-boot/rpi_2/u-boot.bin $R/boot/firmware/uboot.bin
-
-    # Blacklist platform modules not applicable to the RPI
-    cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
-blacklist snd_bcm2835
-blacklist snd_soc_pcm512x_i2c
-blacklist snd_soc_pcm512x
-blacklist snd_soc_tas5713
-blacklist snd_soc_wm8804
-EOM
-
-    # Disable TLP
-    if [ -f $R/etc/default/tlp ]; then
-        sed -i s'/TLP_ENABLE=1/TLP_ENABLE=0/' $R/etc/default/tlp
-    fi
-
-    # udev rules
-    printf 'SUBSYSTEM=="input", GROUP="input", MODE="0660"\n' >> $R/etc/udev/rules.d/99-com.rules
-
-    # copies-and-fills
-    wget -c "${COFI}" -O $R/tmp/cofi.deb
-    chroot $R gdebi -n /tmp/cofi.deb
-
-    # Disabled cofi so it doesn't segfault when building via qemu-user-static
-    mv -v $R/etc/ld.so.preload $R/etc/ld.so.preload.disable
-
-    # Set up fstab
-    cat <<EOM >$R/etc/fstab
-proc            /proc           proc    defaults          0       0
-/dev/mmcblk0p2  /               ${FS}   defaults,noatime  0       1
-/dev/mmcblk0p1  /boot/          vfat    defaults          0       2
-EOM
-
-    # BOOT config
-    cat <<EOM >$R/boot/firmware/config.txt
-kernel=uboot.bin
-EOM
-
-    # Set up firmware config
-    cat <<EOM >$R/boot/firmware/cmdline.txt
-net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash
-EOM
-
-    # update bootloader
-    #chroot $R update-initramfs -c
-    chroot $R flash-kernel
-}
-
-function setup_minimal_kernel() {
-    local FS="${1}"
-    if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
-        echo "ERROR! Unsupport filesystem requested. Exitting."
-        exit 1
-    fi
-
-    # Install the RPi PPA
-    chroot $R apt-add-repository -y ppa:ubuntu-pi-flavour-makers/ppa
-    chroot $R apt-get update
-
-    # Firmware Kernel installation
-    chroot $R apt-get -y install raspberrypi-bootloader rpi-update
-    chroot $R rpi-update
-
-    # gdebi-core used for installing copies-and-fills and omxplayer
-    chroot $R apt-get -y install gdebi-core
-    local COFI="http://archive.raspberrypi.org/debian/pool/main/r/raspi-copies-and-fills/raspi-copies-and-fills_0.5-1_armhf.deb"
-
-    # Blacklist platform modules not applicable to the RPI
-    cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
-blacklist snd_bcm2835
-blacklist snd_soc_pcm512x_i2c
-blacklist snd_soc_pcm512x
-blacklist snd_soc_tas5713
-blacklist snd_soc_wm8804
-EOM
-
-    # Disable TLP
-    if [ -f $R/etc/default/tlp ]; then
-        sed -i s'/TLP_ENABLE=1/TLP_ENABLE=0/' $R/etc/default/tlp
-    fi
-
-    # udev rules
-    printf 'SUBSYSTEM=="input", GROUP="input", MODE="0660"\n' >> $R/etc/udev/rules.d/99-com.rules
-
-    # copies-and-fills
-    wget -c "${COFI}" -O $R/tmp/cofi.deb
-    chroot $R gdebi -n /tmp/cofi.deb
-
-    # Disabled cofi so it doesn't segfault when building via qemu-user-static
-    mv -v $R/etc/ld.so.preload $R/etc/ld.so.preload.disable
-
-    # Set up fstab
-    cat <<EOM >$R/etc/fstab
-proc            /proc           proc    defaults          0       0
-/dev/mmcblk0p2  /               ${FS}   defaults,noatime  0       1
-/dev/mmcblk0p1  /boot/          vfat    defaults          0       2
-EOM
-
-    # BOOT config : WARNING this is /boot/!
-    cat <<EOM >$R/boot/config.txt
-kernel=uboot.bin
-EOM
-
-    # Set up firmware config : WARNING this is /boot/!
-    cat <<EOM >$R/boot/cmdline.txt
-net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash
-EOM
-}
-
-function setup_minimal_from_local() {
-    local FS="${1}"
-    if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
-        echo "ERROR! Unsupport filesystem requested. Exitting."
-        exit 1
-    fi
-    local LOCAL_DEB_REPO=${PWD}/KERNEL
-
-    # rpi-update dependency
-    chroot $R apt-get -y install binutils curl 
-
-    # Firmware Kernel installation
-    dpkg --root=${R} --install ${LOCAL_DEB_REPO}/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb
-    dpkg --root=${R} --install ${LOCAL_DEB_REPO}/rpi-update_20151118~xenial1.0_all.deb
-    chroot $R rpi-update
-
-    # Blacklist platform modules not applicable to the RPI
-    cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
-blacklist snd_bcm2835
-blacklist snd_soc_pcm512x_i2c
-blacklist snd_soc_pcm512x
-blacklist snd_soc_tas5713
-blacklist snd_soc_wm8804
-EOM
-
-    # Disable TLP
-    if [ -f $R/etc/default/tlp ]; then
-        sed -i s'/TLP_ENABLE=1/TLP_ENABLE=0/' $R/etc/default/tlp
-    fi
-
-    # udev rules
-    printf 'SUBSYSTEM=="input", GROUP="input", MODE="0660"\n' >> $R/etc/udev/rules.d/99-com.rules
-
-    # copies-and-fills
-    dpkg --root=${R} --install ${LOCAL_DEB_REPO}/raspi-copies-and-fills_0.5-1_armhf.deb
-
-    # Disabled cofi so it doesn't segfault when building via qemu-user-static
-    mv -v $R/etc/ld.so.preload $R/etc/ld.so.preload.disable
-
-    # Set up fstab
-    cat <<EOM >$R/etc/fstab
-proc            /proc           proc    defaults          0       0
-/dev/mmcblk0p2  /               ${FS}   defaults,noatime  0       1
-/dev/mmcblk0p1  /boot/          vfat    defaults          0       2
-EOM
-
-    # BOOT config : WARNING this is /boot/!
-    cat <<EOM >$R/boot/config.txt
-kernel=uboot.bin
-EOM
-
-    # Set up firmware config : WARNING this is /boot/!
-    cat <<EOM >$R/boot/cmdline.txt
-net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash
-EOM
+function apt_clean() {
+    chroot $R apt-get autoremove -y --purge
+    chroot $R apt-get clean -y
+    chroot $R apt-get autoclean -y 
 }
 
 function clean_up() {
@@ -517,10 +355,25 @@ function clean_up() {
     rm -f $R/var/crash/*
     rm -f $R/var/lib/urandom/random-seed
 
-    # Clean up old Raspberry Pi firmware and modules
+    # clean up locales and apt cache
+    rm -rf $R/var/cache/debconf/*-old
+    rm -rf $R/var/lib/apt/lists/*
+    rm -rf $R/var/lib/cache/*
+    # remove logs as well.
+    rm -rf $R/var/log/*
+
+    # Remove apt cache indexes https://wiki.ubuntu.com/ReducingDiskFootprint
+    # Apt stores two caches in /var/cache/apt/: srcpkgcache.bin is rather useless these days, and pkgcache.bin is only needed for faster lookups with apt-cache (software-center has its own cache). 
+    # Removing those two buys 50 MB, for the price of apt-cache taking an extra two seconds for each lookup.
+    rm -rf $R/var/cache/apt/pkgcache.bin || true
+    rm -rf $R/var/cache/apt/srcpkgcache.bin || true
+
+    # Clean up old firmware and modules
     rm -f $R/boot/.firmware_revision || true
     rm -rf $R/boot.bak || true
-    rm -rf $R/lib/modules/4.1.7* || true
+
+    # non-existent at this point
+    #rm -rf $R/lib/modules/4.1.7* || true
     rm -rf $R/lib/modules.bak || true
 
     # Potentially sensitive.
@@ -545,37 +398,36 @@ function clean_up() {
     rm -rf $R/tmp/.standard || true
 }
 
-function unarchive_base_image() {
-    local BASE_IMAGE="${FLAVOUR}-${VERSION}${QUALITY}-armhf-base.tar.gz"
-    local TARGET="${1}"
-    if [ ! -d "${TARGET}" ]; then
-        mkdir -p "${TARGET}"
-    fi
-    tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET} .
+# Unmount host system
+function umount_system() {
+    umount -l $R/sys
+    umount -l $R/proc
+    umount -l $R/dev/pts
+    umount -l $R/dev
 }
 
-function single_stage_developer_rpi() {
+function single_stage_odroid() {
     R="${BASE_R}"
+    #check_crossbuild_req
     unarchive_base_image ${R}
     sync_to "${DEVICE_R}"
+
     R="${DEVICE_R}"
     mount_system
+    configure_network
+    apt_setup
+    ubuntu_development
+    configure_ssh
+    generate_locale
+    docker_setup
 
     create_groups
     create_user
-    prepare_oem_config
-    configure_ssh
-    configure_network
-    setup_developer_package
-#    setup_kernel_from_remote ${FS_TYPE}
-#    setup_alternative_kernel ${FS_TYPE}
-#    setup_minimal_kernel ${FS_TYPE}
-    setup_minimal_from_local ${FS_TYPE}
+    
+    setup_raspberry_specifics ${FS_TYPE}
     apt_clean
     clean_up
-
     umount_system
 }
 
-single_stage_developer_rpi
-
+single_stage_odroid
