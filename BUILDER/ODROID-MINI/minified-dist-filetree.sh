@@ -104,6 +104,9 @@ path-exclude /usr/share/linda/*
 # don't autocomplete
 path-exclude /usr/share/zsh/vendor-completions/*
 path-exclude /usr/share/bash-completion/completions/*
+# don't install translation
+path-exclude /usr/share/locale/*
+path-include /usr/share/locale/en*
 EOM
 
     # tell APT not to install recommends & suggestion
@@ -163,10 +166,7 @@ LC_COLLATE="en_US.UTF-8"
 LC_ALL="en_US.UTF-8"
 EOM
 
-    # Doesn't work ;(
-    #cp -Rf $R/usr/share/locale/en* $R/tmp/
-    #rm -rf $R/usr/share/locale/*
-    #mv $R/tmp/en* $R/usr/share/locale/
+    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
 
     for LOCALE in $(chroot $R locale | cut -d'=' -f2 | grep -v : | sed 's/"//g' | uniq); do
         if [ -n "${LOCALE}" ]; then
@@ -290,6 +290,8 @@ function clean_up() {
     # remove auto-completion
     rm -rf ${R}/usr/share/zsh/vendor-completions/*
     rm -rf ${R}/usr/share/bash-completion/completions/*
+    # then remove existing translations
+    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
     # make sure info directory is not broken for dep check
     mkdir -p ${R}/usr/share/info
 
