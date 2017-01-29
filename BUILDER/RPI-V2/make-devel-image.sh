@@ -46,10 +46,10 @@ function make_raspi2_image() {
         exit 1
     fi
 
-    # SIZE_LIMIT -> (539M + 64M) ~ 610 MB | SIZE -> 610 * 1024 * 1024 / 512 = 1249280 |  SEEK = SIZE_LIMIT * 1.0 = 610
-    SIZE_LIMIT=610
-    SIZE=1249280
-    SEEK=610
+    # SIZE_LIMIT -> (978M + 64M) ~ 1050 MB | SIZE -> 610 * 1024 * 1024 / 512 = 2150400 |  SEEK = SIZE_LIMIT * 1.1 = 1155
+    SIZE_LIMIT=1050
+    SIZE=2150400
+    SEEK=1155
 
     # If a compress version exists, remove it.
     rm -f "${BASEDIR}/${IMAGE}.bz2" || true
@@ -95,4 +95,4 @@ function make_tarball() {
 
 R=${DEVICE_R}
 make_raspi2_image ${FS_TYPE} 0
-make_tarball
+

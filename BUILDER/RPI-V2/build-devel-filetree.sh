@@ -290,16 +290,12 @@ function setup_raspberry_specifics() {
     fi
 
     # Hardware - Create a fake HW clock and add rng-tools These are coming from official repo
-    chroot $R apt-get -y install fake-hwclock rng-tools
-    
-    chroot $R apt install -y curl binutils
+    chroot $R apt-get -y install fake-hwclock rng-tools linux-firmware curl binutils
     chroot $R apt-add-repository -y ppa:ubuntu-pi-flavour-makers/ppa
     chroot $R apt-get update
 
     # Kernel installation
     chroot $R apt-get -y install raspberrypi-bootloader
-    chroot $R apt-get -y install linux-firmware 
-    chroot $R apt-get -y install raspberrypi-firmware
 
     # Firmware, Modules, Kernel 4.4.22-v7+
     wget -c https://raw.githubusercontent.com/Hexxeh/rpi-update/master/rpi-update -O $R/usr/bin/rpi-update
