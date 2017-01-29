@@ -35,8 +35,8 @@ if [ $(id -u) -ne 0 ]; then
     exit 1
 fi
 
-TARBALL="${DIST_NAME}-dist-armhf-raspberry-rootfs-${RELEASE}.tar.bz2"
-IMAGE="${DIST_NAME}-dist-armhf-raspberry-${RELEASE}.img"
+TARBALL="${DIST_NAME}-devel-armhf-raspberry-rootfs-${RELEASE}.tar.bz2"
+IMAGE="${DIST_NAME}-devel-armhf-raspberry-${RELEASE}.img"
 
 function make_raspi2_image() {
     # Build the image file
