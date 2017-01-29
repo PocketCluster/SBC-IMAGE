@@ -228,7 +228,7 @@ function create_user() {
 
     chroot $R addgroup --gid 29999 ${DIST_USERGROUP}
     chroot $R adduser --gecos "PocketCluster (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
-    chroot $R usermod -a -G sudo -p ${PASSWD} ${DIST_USERGROUP} docker
+    chroot $R usermod -a -G sudo,docker -p ${PASSWD} ${DIST_USERNAME}
 }
 
 function setup_raspberry_specifics() {
