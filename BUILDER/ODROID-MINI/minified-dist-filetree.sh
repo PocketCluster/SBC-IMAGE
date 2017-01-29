@@ -35,31 +35,13 @@ if [ $(id -u) -ne 0 ]; then
     exit 1
 fi
 
-# Base debootstrap
-function check_crossbuild_req() {
-    # Required tools
-    if [ ${ARCH} != ${DEVICE_ARCH} ]; then
-        apt-get -y install binfmt-support debootstrap f2fs-tools qemu-user-static rsync ubuntu-keyring wget whois
-        update-binfmts --enable qemu-${DEVICE_ARCH}
-    fi
-}
-
 function unarchive_base_image() {
-    local BASE_IMAGE="${RELEASE}-base-arm64.tar.gz"
+    local BASE_IMAGE="${RELEASE}-base-${DEVICE_ARCH}.tar.gz"
     local TARGET="${1}"
     if [ ! -d "${TARGET}" ]; then
         mkdir -p "${TARGET}"
     fi
     tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET}
-}
-
-function sync_to() {
-    local TARGET="${1}"
-    if [ ! -d "${TARGET}" ]; then
-        mkdir -p "${TARGET}"
-    fi
-    #rsync -a --progress --delete ${R}/ ${TARGET}/
-    rsync -a --delete ${R}/ ${TARGET}/
 }
 
 # Mount host system
@@ -104,56 +86,62 @@ iface eth0 inet dhcp
 EOM
 }
 
-# Set up initial sources.list
-function apt_sources() {
-    cat <<EOM >$R/etc/apt/sources.list
-deb http://ports.ubuntu.com/ ${RELEASE} main restricted universe multiverse
-deb-src http://ports.ubuntu.com/ ${RELEASE} main restricted universe multiverse
-
-deb http://ports.ubuntu.com/ ${RELEASE}-updates main restricted universe multiverse
-deb-src http://ports.ubuntu.com/ ${RELEASE}-updates main restricted universe multiverse
-
-deb http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe multiverse
-deb-src http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe multiverse
-
-deb http://ports.ubuntu.com/ ${RELEASE}-backports main restricted universe multiverse
-deb-src http://ports.ubuntu.com/ ${RELEASE}-backports main restricted universe multiverse
+function apt_setup() {
+    # Tell DPKG not to install documents
+    if [ ! -d "${R}/etc/dpkg/dpkg.cfg.d/" ]; then
+        mkdir ${R}/etc/dpkg/dpkg.cfg.d/
+    fi
+    cat <<EOM >${R}/etc/dpkg/dpkg.cfg.d/01_nodoc
+path-exclude /usr/share/doc/*
+# we need to keep copyright files for legal reasons
+path-include /usr/share/doc/*/copyright
+path-exclude /usr/share/man/*
+path-exclude /usr/share/groff/*
+path-exclude /usr/share/info/*
+# lintian stuff is small, but really unnecessary
+path-exclude /usr/share/lintian/*
+path-exclude /usr/share/linda/*
+# don't autocomplete
+path-exclude /usr/share/zsh/vendor-completions/*
+path-exclude /usr/share/bash-completion/completions/*
 EOM
 
-    cat <<EOM >$R/etc/apt/apt.conf.d/50singleboards
+    # tell APT not to install recommends & suggestion
+    if [ ! -d "${R}/etc/apt/apt.conf.d/" ]; then
+        mkdir ${R}/etc/apt/apt.conf.d/
+    fi
+    cat <<EOM >$R/etc/apt/sources.list
+deb http://ports.ubuntu.com/ ${RELEASE} main restricted universe
+deb http://ports.ubuntu.com/ ${RELEASE}-updates main restricted universe
+deb http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe
+EOM
+    cat <<EOM >${R}/etc/apt/apt.conf.d/50singleboards
 # Never use pdiffs, current implementation is very slow on low-powered devices
 Acquire::PDiffs "0";
 EOM
-}
-
-function apt_block_suggestion() {
-    mkdir -p $R/etc/apt/
-    cat <<EOM >$R/etc/apt/apt.conf
-# APT::Install-Recommends "false";
-APT::Get::Install-Suggests "false";
+    cat <<EOM >${R}/etc/apt/apt.conf
+APT::Install-Recommends "false";
 APT::Install-Suggests "false";
 EOM
-}
 
-function apt_update_only() {
     chroot $R apt-get update
 }
 
 # Install Ubuntu Essentials
 function ubuntu_essential() {
     # only the essentials
-    chroot $R apt-get -y install language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata dialog resolvconf
+    chroot $R apt-get -y install --no-install-suggests language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata dialog resolvconf
     # Config timezone, Keyboard, Console
     chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
     chroot $R dpkg-reconfigure --frontend=noninteractive debconf
 
     # console & keyboard
-    chroot $R apt-get -y install console-common console-data console-setup keyboard-configuration
+    chroot $R apt-get -y install --no-install-suggests console-common console-data console-setup keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive console-setup
 
     # system hang prevention
-    chroot $R apt-get -y install libpam-systemd dbus
+    chroot $R apt-get -y install --no-install-suggests libpam-systemd dbus
 }
 
 function generate_locale() {
@@ -236,7 +224,7 @@ function create_user() {
 
     chroot $R addgroup --gid 29999 ${DIST_USERGROUP}
     chroot $R adduser --gecos "PocketCluster (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
-    chroot $R usermod -a -G sudo -p ${PASSWD} ${DIST_USERNAME}
+    chroot $R usermod -a -G sudo,docker -p ${PASSWD} ${DIST_USERNAME}
 }
 
 function setup_odroid_specifics() {
@@ -257,8 +245,9 @@ EOM
 }
 
 function apt_clean() {
-    chroot $R apt-get -y autoremove --purge
-    chroot $R apt-get clean
+    chroot $R apt-get autoremove -y --purge
+    chroot $R apt-get clean -y
+    chroot $R apt-get autoclean -y 
 }
 
 function clean_up() {
@@ -270,17 +259,39 @@ function clean_up() {
     rm -f $R/run/cups/cups.sock || true
     rm -f $R/run/uuidd/request || true
     rm -f $R/etc/*-
-    rm -rf $R/tmp/*
+    # slash rest of residue
+    rm -rf $R/tmp/* 
+    rm -rf $R/var/tmp/*
     rm -f $R/var/crash/*
     rm -f $R/var/lib/urandom/random-seed
 
     # clean up locales and apt cache
     rm -rf $R/var/cache/debconf/*-old
     rm -rf $R/var/lib/apt/lists/*
-    rm -rf $R/usr/share/doc/*
-
+    rm -rf $R/var/lib/cache/*
     # remove logs as well.
     rm -rf $R/var/log/*
+
+    # Remove apt cache indexes https://wiki.ubuntu.com/ReducingDiskFootprint
+    # Apt stores two caches in /var/cache/apt/: srcpkgcache.bin is rather useless these days, and pkgcache.bin is only needed for faster lookups with apt-cache (software-center has its own cache). 
+    # Removing those two buys 50 MB, for the price of apt-cache taking an extra two seconds for each lookup.
+    rm -rf $R/var/cache/apt/pkgcache.bin || true
+    rm -rf $R/var/cache/apt/srcpkgcache.bin || true
+
+    # remove docs
+    find ${R}/usr/share/doc -depth -type f ! -name copyright|xargs rm || true
+    find ${R}/usr/share/doc -empty|xargs rmdir || true
+    rm -rf ${R}/usr/share/man/* 
+    rm -rf ${R}/usr/share/groff/* 
+    rm -rf ${R}/usr/share/info/*
+    rm -rf ${R}/usr/share/lintian/* 
+    rm -rf ${R}/usr/share/linda/* 
+    rm -rf ${R}/var/cache/man/*
+    # remove auto-completion
+    rm -rf ${R}/usr/share/zsh/vendor-completions/*
+    rm -rf ${R}/usr/share/bash-completion/completions/*
+    # make sure info directory is not broken for dep check
+    mkdir -p ${R}/usr/share/info
 
     # Clean up old firmware and modules
     rm -f $R/boot/.firmware_revision || true
@@ -320,18 +331,13 @@ function umount_system() {
     umount -l $R/dev
 }
 
-function single_stage_odroid() {
-    R="${BASE_R}"
-    #check_crossbuild_req
-    unarchive_base_image ${R}
-    sync_to "${DEVICE_R}"
-
+function single_stage_build() {
     R="${DEVICE_R}"
+    unarchive_base_image ${R}
     mount_system
+
     configure_network
-    apt_sources
-    apt_block_suggestion
-    apt_update_only
+    apt_setup
     ubuntu_essential
     generate_locale
     docker_setup
@@ -345,4 +351,4 @@ function single_stage_odroid() {
     umount_system
 }
 
-single_stage_odroid
+single_stage_build

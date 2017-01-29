@@ -36,21 +36,12 @@ if [ $(id -u) -ne 0 ]; then
 fi
 
 function unarchive_base_image() {
-    local BASE_IMAGE="${RELEASE}-base-armhf.tar.gz"
+    local BASE_IMAGE="${RELEASE}-base-${DEVICE_ARCH}.tar.gz"
     local TARGET="${1}"
     if [ ! -d "${TARGET}" ]; then
         mkdir -p "${TARGET}"
     fi
     tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET}
-}
-
-function sync_to() {
-    local TARGET="${1}"
-    if [ ! -d "${TARGET}" ]; then
-        mkdir -p "${TARGET}"
-    fi
-    #rsync -a --progress --delete ${R}/ ${TARGET}/
-    rsync -a --delete ${R}/ ${TARGET}/
 }
 
 # Mount host system
@@ -245,11 +236,12 @@ function setup_raspberry_specifics() {
     chroot $R apt-add-repository -y ppa:ubuntu-pi-flavour-makers/ppa
     chroot $R apt-get update
 
-    # Kernel installation
+    # Bootloader installation
     chroot $R apt-get -y install raspberrypi-bootloader
-    # Firmware (we'll skip as rpi-update handles it)
-    #chroot $R apt-get -y install raspberrypi-firmware
 
+    # Remove all old modules
+    rm -rf $R/lib/modules/* || true
+    
     # Firmware, Modules, Kernel 4.4.22-v7+
     wget -c https://raw.githubusercontent.com/Hexxeh/rpi-update/master/rpi-update -O $R/usr/bin/rpi-update
     chmod 755 $R/usr/bin/rpi-update
@@ -304,7 +296,6 @@ function clean_up() {
     rm -f $R/run/cups/cups.sock || true
     rm -f $R/run/uuidd/request || true
     rm -f $R/etc/*-
-    rm -rf $R/tmp/*
     # slash rest of residue
     rm -rf $R/tmp/* 
     rm -rf $R/var/tmp/*
@@ -333,12 +324,11 @@ function clean_up() {
     rm -rf ${R}/usr/share/lintian/* 
     rm -rf ${R}/usr/share/linda/* 
     rm -rf ${R}/var/cache/man/*
-    # make sure info directory is not broken for dep check
-    mkdir -p ${R}/usr/share/info
-
     # remove auto-completion
     rm -rf ${R}/usr/share/zsh/vendor-completions/*
     rm -rf ${R}/usr/share/bash-completion/completions/*
+    # make sure info directory is not broken for dep check
+    mkdir -p ${R}/usr/share/info
 
     # Clean up old firmware and modules
     rm -f $R/boot/.firmware_revision || true
@@ -369,13 +359,6 @@ function clean_up() {
     rm -rf $R/tmp/.bootstrap || true
     rm -rf $R/tmp/.minimal || true
     rm -rf $R/tmp/.standard || true
-
-    # reduce the source to official only
-    cat <<EOM >$R/etc/apt/sources.list
-deb http://ports.ubuntu.com/ ${RELEASE} main restricted universe
-deb http://ports.ubuntu.com/ ${RELEASE}-updates main restricted universe
-deb http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe
-EOM
 }
 
 # Unmount host system
@@ -387,13 +370,10 @@ function umount_system() {
 }
 
 function single_stage_build() {
-    R="${BASE_R}"
-    #check_crossbuild_req
-    unarchive_base_image ${R}
-    sync_to "${DEVICE_R}"
-
     R="${DEVICE_R}"
+    unarchive_base_image ${R}
     mount_system
+
     configure_network
     apt_setup
     ubuntu_essential
