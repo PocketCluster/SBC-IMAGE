@@ -115,18 +115,32 @@ function apt_update_only() {
 # Install Ubuntu Development
 function ubuntu_development() {
     # only the essentials
-    chroot $R apt-get -y install --no-install-suggests language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata dialog resolvconf
+    chroot $R apt-get -y install dialog language-pack-en-base software-properties-common udev wget sudo whois less f2fs-tools vim nano htop rsync python-pip dosfstools
+    chroot $R apt-get -y install isc-dhcp-client netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata build-essential
     # Config timezone, Keyboard, Console
     chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
     chroot $R dpkg-reconfigure --frontend=noninteractive debconf
 
     # console & keyboard
-    chroot $R apt-get -y install --no-install-suggests console-common console-data console-setup keyboard-configuration
+    chroot $R apt-get -y install console-common console-data console-setup keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive console-setup
 
     # system hang prevention
-    chroot $R apt-get -y install --no-install-suggests libpam-systemd dbus
+    chroot $R apt-get -y install libpam-systemd dbus
+
+    # Install golang
+    tar -xvzf ${PWD}/go-1.7.5.linux-arm64.tar.gz -C ${R}/opt
+    chroot $R ln -s /opt/go-1.7.5 /opt/go
+    mkdir -p ${R}/opt/gopkg/{src,pkg,bin}
+    cat <<EOM >>${R}/etc/bash.bashrc
+if [ -d /opt/go ]; then
+    export GOPATH=/opt/gopkg
+    export GOROOT=/opt/go
+#   how to escape this line? 
+#   export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+fi
+EOM
 }
 
 function configure_ssh() {
@@ -178,7 +192,10 @@ LC_COLLATE="en_US.UTF-8"
 LC_ALL="en_US.UTF-8"
 EOM
 
-    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
+    # Doesn't work ;(
+    #cp -Rf $R/usr/share/locale/en* $R/tmp/
+    #rm -rf $R/usr/share/locale/*
+    #mv $R/tmp/en* $R/usr/share/locale/
 
     for LOCALE in $(chroot $R locale | cut -d'=' -f2 | grep -v : | sed 's/"//g' | uniq); do
         if [ -n "${LOCALE}" ]; then
@@ -236,7 +253,7 @@ function create_user() {
 
     chroot $R addgroup --gid 29999 ${DIST_USERGROUP}
     chroot $R adduser --gecos "PocketCluster (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
-    chroot $R usermod -a -G sudo,docker -p ${PASSWD} ${DIST_USERNAME}
+    chroot $R usermod -a -G sudo -p ${PASSWD} ${DIST_USERNAME}
 
     echo "pocket ALL=(ALL) NOPASSWD:ALL" > $R/etc/sudoers.d/pocket
 }
@@ -280,24 +297,13 @@ function clean_up() {
     rm -f $R/run/cups/cups.sock || true
     rm -f $R/run/uuidd/request || true
     rm -f $R/etc/*-
-    # slash rest of residue
-    rm -rf $R/tmp/* 
-    rm -rf $R/var/tmp/*
+    rm -rf $R/tmp/*
     rm -f $R/var/crash/*
     rm -f $R/var/lib/urandom/random-seed
 
     # clean up locales and apt cache
     rm -rf $R/var/cache/debconf/*-old
     rm -rf $R/var/lib/apt/lists/*
-    rm -rf $R/var/lib/cache/*
-    # remove logs as well.
-    rm -rf $R/var/log/*
-
-    # Remove apt cache indexes https://wiki.ubuntu.com/ReducingDiskFootprint
-    # Apt stores two caches in /var/cache/apt/: srcpkgcache.bin is rather useless these days, and pkgcache.bin is only needed for faster lookups with apt-cache (software-center has its own cache). 
-    # Removing those two buys 50 MB, for the price of apt-cache taking an extra two seconds for each lookup.
-    rm -rf $R/var/cache/apt/pkgcache.bin || true
-    rm -rf $R/var/cache/apt/srcpkgcache.bin || true
 
     # Clean up old firmware and modules
     rm -f $R/boot/.firmware_revision || true
@@ -337,7 +343,7 @@ function umount_system() {
     umount -l $R/dev
 }
 
-function single_stage_build() {
+function single_stage_odroid() {
     R="${DEVICE_R}"
     unarchive_base_image ${R}
     mount_system
@@ -359,4 +365,4 @@ function single_stage_build() {
     umount_system
 }
 
-single_stage_build
+single_stage_odroid
