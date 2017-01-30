@@ -41,3 +41,4 @@
 19. [ ] Check to modify `/etc/hostname` and `/etc/hosts` together
 20. [ ] Apply techniques from [ReducingDiskFootprint](https://wiki.ubuntu.com/ReducingDiskFootprint) [PDF](DOCUMENT/ReducingDiskFootprint-UbuntuWiki.pdf).
 21. [ ] Install only the bare minimum _dependents_. *This has backfired to increase in size.
+22. [ ] Remove RaspberryPI VideoCore
