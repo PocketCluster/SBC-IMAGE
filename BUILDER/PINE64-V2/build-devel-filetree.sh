@@ -36,7 +36,7 @@ if [ $(id -u) -ne 0 ]; then
 fi
 
 function unarchive_base_image() {
-    local BASE_IMAGE="${RELEASE}-base-${DEVICE_ARCH}.tar.gz"
+    local BASE_IMAGE="${RELEASE}-base-arm64.tar.gz"
     local TARGET="${1}"
     if [ ! -d "${TARGET}" ]; then
         mkdir -p "${TARGET}"
@@ -86,65 +86,90 @@ iface eth0 inet dhcp
 EOM
 }
 
-function apt_setup() {
-    # Tell DPKG not to install documents
-    if [ ! -d "${R}/etc/dpkg/dpkg.cfg.d/" ]; then
-        mkdir ${R}/etc/dpkg/dpkg.cfg.d/
-    fi
-    cat <<EOM >${R}/etc/dpkg/dpkg.cfg.d/01_nodoc
-path-exclude /usr/share/doc/*
-# we need to keep copyright files for legal reasons
-path-include /usr/share/doc/*/copyright
-path-exclude /usr/share/man/*
-path-exclude /usr/share/groff/*
-path-exclude /usr/share/info/*
-# lintian stuff is small, but really unnecessary
-path-exclude /usr/share/lintian/*
-path-exclude /usr/share/linda/*
-# don't autocomplete
-path-exclude /usr/share/zsh/vendor-completions/*
-path-exclude /usr/share/bash-completion/completions/*
-# don't install translation
-path-exclude /usr/share/locale/*
-path-include /usr/share/locale/en*
+# Set up initial sources.list
+function apt_sources() {
+    cat <<EOM >$R/etc/apt/sources.list
+deb http://ports.ubuntu.com/ ${RELEASE} main restricted universe multiverse
+deb-src http://ports.ubuntu.com/ ${RELEASE} main restricted universe multiverse
+
+deb http://ports.ubuntu.com/ ${RELEASE}-updates main restricted universe multiverse
+deb-src http://ports.ubuntu.com/ ${RELEASE}-updates main restricted universe multiverse
+
+deb http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe multiverse
+deb-src http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe multiverse
+
+deb http://ports.ubuntu.com/ ${RELEASE}-backports main restricted universe multiverse
+deb-src http://ports.ubuntu.com/ ${RELEASE}-backports main restricted universe multiverse
 EOM
 
-    # tell APT not to install recommends & suggestion
-    if [ ! -d "${R}/etc/apt/apt.conf.d/" ]; then
-        mkdir ${R}/etc/apt/apt.conf.d/
-    fi
-    cat <<EOM >$R/etc/apt/sources.list
-deb http://ports.ubuntu.com/ ${RELEASE} main restricted universe
-deb http://ports.ubuntu.com/ ${RELEASE}-updates main restricted universe
-deb http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe
-EOM
-    cat <<EOM >${R}/etc/apt/apt.conf.d/50singleboards
+    cat <<EOM >$R/etc/apt/apt.conf.d/50singleboards
 # Never use pdiffs, current implementation is very slow on low-powered devices
 Acquire::PDiffs "0";
 EOM
-    cat <<EOM >${R}/etc/apt/apt.conf
-APT::Install-Recommends "false";
-APT::Install-Suggests "false";
-EOM
+}
 
+function apt_update_only() {
     chroot $R apt-get update
 }
 
-# Install Ubuntu Essentials
-function ubuntu_essential() {
+# Install Ubuntu Development
+function ubuntu_development() {
     # only the essentials
-    chroot $R apt-get -y install --no-install-suggests language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata dialog resolvconf
+    chroot $R apt-get -y install dialog language-pack-en-base software-properties-common udev wget sudo whois less f2fs-tools vim nano htop rsync python-pip dosfstools
+    chroot $R apt-get -y install isc-dhcp-client netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata build-essential
     # Config timezone, Keyboard, Console
     chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
     chroot $R dpkg-reconfigure --frontend=noninteractive debconf
 
     # console & keyboard
-    chroot $R apt-get -y install --no-install-suggests console-common console-data console-setup keyboard-configuration
+    chroot $R apt-get -y install console-common console-data console-setup keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive console-setup
 
     # system hang prevention
-    chroot $R apt-get -y install --no-install-suggests libpam-systemd dbus
+    chroot $R apt-get -y install libpam-systemd dbus
+
+    # Install golang
+    tar -xvzf ${PWD}/go-1.7.5.linux-arm64.tar.gz -C ${R}/opt
+    chroot $R ln -s /opt/go-1.7.5 /opt/go
+    mkdir -p ${R}/opt/gopkg/{src,pkg,bin}
+    cat <<EOM >>${R}/etc/bash.bashrc
+if [ -d /opt/go ]; then
+    export GOPATH=/opt/gopkg
+    export GOROOT=/opt/go
+    export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+fi
+EOM
+}
+
+function configure_ssh() {
+    chroot $R apt-get -y install openssh-server
+    cat <<EOM >$R/etc/systemd/system/sshdgenkeys.service
+[Unit]
+Description=SSH key generation on first startup
+Before=ssh.service
+ConditionPathExists=|!/etc/ssh/ssh_host_key
+ConditionPathExists=|!/etc/ssh/ssh_host_key.pub
+ConditionPathExists=|!/etc/ssh/ssh_host_rsa_key
+ConditionPathExists=|!/etc/ssh/ssh_host_rsa_key.pub
+ConditionPathExists=|!/etc/ssh/ssh_host_dsa_key
+ConditionPathExists=|!/etc/ssh/ssh_host_dsa_key.pub
+ConditionPathExists=|!/etc/ssh/ssh_host_ecdsa_key
+ConditionPathExists=|!/etc/ssh/ssh_host_ecdsa_key.pub
+ConditionPathExists=|!/etc/ssh/ssh_host_ed25519_key
+ConditionPathExists=|!/etc/ssh/ssh_host_ed25519_key.pub
+
+[Service]
+ExecStart=/usr/bin/ssh-keygen -A
+Type=oneshot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=ssh.service
+EOM
+
+    mkdir -p $R/etc/systemd/system/ssh.service.wants
+    chroot $R ln -s /etc/systemd/system/sshdgenkeys.service /etc/systemd/system/ssh.service.wants
 }
 
 function generate_locale() {
@@ -166,7 +191,10 @@ LC_COLLATE="en_US.UTF-8"
 LC_ALL="en_US.UTF-8"
 EOM
 
-    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
+    # Doesn't work ;(
+    #cp -Rf $R/usr/share/locale/en* $R/tmp/
+    #rm -rf $R/usr/share/locale/*
+    #mv $R/tmp/en* $R/usr/share/locale/
 
     for LOCALE in $(chroot $R locale | cut -d'=' -f2 | grep -v : | sed 's/"//g' | uniq); do
         if [ -n "${LOCALE}" ]; then
@@ -224,7 +252,9 @@ function create_user() {
 
     chroot $R addgroup --gid 29999 ${DIST_USERGROUP}
     chroot $R adduser --gecos "PocketCluster (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
-    chroot $R usermod -a -G sudo,docker -p ${PASSWD} ${DIST_USERNAME}
+    chroot $R usermod -a -G sudo -p ${PASSWD} ${DIST_USERNAME}
+
+    echo "pocket ALL=(ALL) NOPASSWD:ALL" > $R/etc/sudoers.d/pocket
 }
 
 function setup_pine64_specifics() {
@@ -238,9 +268,9 @@ function setup_pine64_specifics() {
     rm -rf $R/lib/modules/*         # clean it if it has some
     tar -xzf ../CAPTURED-BOOT/PINE64/pine64-modules-3.10.104-2017-01-30.tar.gz -C $R/
     rm -rf "${R}/lib/module/3.10.104/{source,build} " || true
-    #rm -rf "${R}/lib/module/3.10.104/kernel/sound" || true
-    #rm -rf "${R}/lib/module/3.10.104/kernel/net/{wireless,bluetooth}" || true
-    #rm -rf "${R}/lib/module/3.10.104/kernel/drivers/{bluetooth,parport,ssb,w1}" || true
+    rm -rf "${R}/lib/module/3.10.104/kernel/sound" || true
+    rm -rf "${R}/lib/module/3.10.104/kernel/net/{wireless,bluetooth}" || true
+    rm -rf "${R}/lib/module/3.10.104/kernel/drivers/{bluetooth,parport,ssb,w1}" || true
     echo "We need further shrink module directory"
     
     # /etc/fstab for proper mouting
@@ -252,9 +282,8 @@ EOM
 }
 
 function apt_clean() {
-    chroot $R apt-get autoremove -y --purge
-    chroot $R apt-get clean -y
-    chroot $R apt-get autoclean -y 
+    chroot $R apt-get -y autoremove --purge
+    chroot $R apt-get clean
 }
 
 function clean_up() {
@@ -266,41 +295,13 @@ function clean_up() {
     rm -f $R/run/cups/cups.sock || true
     rm -f $R/run/uuidd/request || true
     rm -f $R/etc/*-
-    # slash rest of residue
-    rm -rf $R/tmp/* 
-    rm -rf $R/var/tmp/*
+    rm -rf $R/tmp/*
     rm -f $R/var/crash/*
     rm -f $R/var/lib/urandom/random-seed
 
     # clean up locales and apt cache
     rm -rf $R/var/cache/debconf/*-old
     rm -rf $R/var/lib/apt/lists/*
-    rm -rf $R/var/lib/cache/*
-    # remove logs as well.
-    rm -rf $R/var/log/*
-
-    # Remove apt cache indexes https://wiki.ubuntu.com/ReducingDiskFootprint
-    # Apt stores two caches in /var/cache/apt/: srcpkgcache.bin is rather useless these days, and pkgcache.bin is only needed for faster lookups with apt-cache (software-center has its own cache). 
-    # Removing those two buys 50 MB, for the price of apt-cache taking an extra two seconds for each lookup.
-    rm -rf $R/var/cache/apt/pkgcache.bin || true
-    rm -rf $R/var/cache/apt/srcpkgcache.bin || true
-
-    # remove docs
-    find ${R}/usr/share/doc -depth -type f ! -name copyright|xargs rm || true
-    find ${R}/usr/share/doc -empty|xargs rmdir || true
-    rm -rf ${R}/usr/share/man/* 
-    rm -rf ${R}/usr/share/groff/* 
-    rm -rf ${R}/usr/share/info/*
-    rm -rf ${R}/usr/share/lintian/* 
-    rm -rf ${R}/usr/share/linda/* 
-    rm -rf ${R}/var/cache/man/*
-    # remove auto-completion
-    rm -rf ${R}/usr/share/zsh/vendor-completions/*
-    rm -rf ${R}/usr/share/bash-completion/completions/*
-    # then remove existing translations
-    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
-    # make sure info directory is not broken for dep check
-    mkdir -p ${R}/usr/share/info
 
     # Clean up old firmware and modules
     rm -f $R/boot/.firmware_revision || true
@@ -340,14 +341,16 @@ function umount_system() {
     umount -l $R/dev
 }
 
-function single_stage_build() {
+function single_stage_odroid() {
     R="${DEVICE_R}"
     unarchive_base_image ${R}
     mount_system
 
     configure_network
-    apt_setup
-    ubuntu_essential
+    apt_sources
+    apt_update_only
+    ubuntu_development
+    configure_ssh
     generate_locale
     docker_setup
 
@@ -360,4 +363,4 @@ function single_stage_build() {
     umount_system
 }
 
-single_stage_build
+single_stage_odroid

@@ -238,21 +238,21 @@ function setup_raspberry_specifics() {
     # Hardware - Create a fake HW clock and add rng-tools These are coming from official repo
     chroot $R apt-get -y install fake-hwclock rng-tools
     
-    chroot $R apt install -y --no-install-recommends --no-install-suggests software-properties-common curl binutils
-    chroot $R apt-add-repository -y ppa:ubuntu-pi-flavour-makers/ppa
-    chroot $R apt-get update
-
     # Bootloader installation
-    chroot $R apt-get -y install raspberrypi-bootloader
-
+    cp ${PWD}/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb $R/tmp
+    chroot $R dpkg -i /tmp/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb
+    rm -rf $R/tmp/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb || true
     # Remove all old modules
-    rm -rf $R/lib/modules/* || true
+    rm -rf "${R}/lib/modules/*" || true
     
     # Firmware, Modules, Kernel 4.4.22-v7+
+    chroot $R apt install -y --no-install-recommends --no-install-suggests curl binutils
     wget -c https://raw.githubusercontent.com/Hexxeh/rpi-update/master/rpi-update -O $R/usr/bin/rpi-update
     chmod 755 $R/usr/bin/rpi-update
     chroot $R rpi-update d26c39bd353eb0ebbc7db3546277083eac4aa3bd
     rm $R/usr/bin/rpi-update
+    # clear of tools
+    chroot $R apt remove -y --purge curl binutils
 
     # Very minimal boot config
     #wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
@@ -282,9 +282,6 @@ EOM
 
     # Save the clock
     chroot $R fake-hwclock save
-
-    # clear of tools
-    chroot $R apt remove -y --purge software-properties-common curl binutils
 }
 
 function apt_clean() {

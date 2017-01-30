@@ -23,8 +23,8 @@
 
 set -ex
 
-TARBALL="${DIST_NAME}-dist-arm64-pine64-rootfs-${RELEASE}.tar.bz2"
-IMAGE="${DIST_NAME}-dist-arm64-pine64-${RELEASE}.img"
+TARBALL="${DIST_NAME}-devel-arm64-pine64-rootfs-${RELEASE}.tar.bz2"
+IMAGE="${DIST_NAME}-devel-arm64-pine64-${RELEASE}.img"
 
 if [ -f build-settings.sh ]; then
     source build-settings.sh

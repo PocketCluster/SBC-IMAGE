@@ -44,3 +44,4 @@
 22. [ ] Remove RaspberryPI VideoCore
 23. [ ] Check and make suder `docker.io.deb` package is static build. Otherwise, we're in trouble.
   - We can now build `docker.io` within docker. We can only create daemon binary!
+24. [ ] Remove mate repository from `RPI-V2` build to make sure it is not contaminated with non-official repo.
