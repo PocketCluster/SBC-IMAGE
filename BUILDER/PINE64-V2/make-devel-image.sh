@@ -47,10 +47,13 @@ function make_pine64_image() {
         exit 1
     fi
 
-    # SIZE_LIMIT -> (1200 + 70) ~ 1300 MB | SIZE -> 1240 * 1024 * 1024 / 512 = 2662400     |  SEEK = SIZE_LIMIT * 1.1 = 1430
-    SIZE_LIMIT=1300
-    SIZE=2662400
-    SEEK=1430
+    ## There must be a particular, artificial limitation on what size of image should be for the initial boot. 
+    ## The # would be incremental such as 348000, 1924000... Find this out on Pine64 Website
+
+    # SIZE_LIMIT -> (677 + 70) ~ 750 MB | SIZE -> 750 * 1024 * 1024 / 512 = 1536000     |  SEEK = SIZE_LIMIT * 1.1 = 820 (it should be 825. then it won't boot.)
+    SIZE_LIMIT=750
+    SIZE=1536000
+    SEEK=820
 
     # If a compress version exists, remove it.
     rm -f "${BASEDIR}/${IMAGE}.bz2" || true
