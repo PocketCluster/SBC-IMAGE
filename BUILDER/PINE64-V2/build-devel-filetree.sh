@@ -268,11 +268,11 @@ function setup_pine64_specifics() {
     mkdir -p $R/lib/modules/        # make sure the path exists
     rm -rf $R/lib/modules/*         # clean it if it has some
     tar -xzf ../CAPTURED-BOOT/PINE64/pine64-modules-3.10.104-2017-01-30.tar.gz -C $R/
-    rm -rf "${R}/lib/modules/3.10.104/{source,build}" || true
-    rm -rf "${R}/lib/modules/3.10.104/kernel/sound" || true
-    rm -rf "${R}/lib/modules/3.10.104/kernel/net/{wireless,bluetooth}" || true
-    rm -rf "${R}/lib/modules/3.10.104/kernel/drivers/{bluetooth,parport,ssb,w1}" || true
-    rm -rf "${R}/lib/modules/3.10.104/kernel/drivers/media/i2c" || true
+    rm -rf ${R}/lib/modules/3.10.104/{source,build} || true
+    rm -rf ${R}/lib/modules/3.10.104/kernel/sound || true
+    rm -rf ${R}/lib/modules/3.10.104/kernel/net/{wireless,bluetooth} || true
+    rm -rf ${R}/lib/modules/3.10.104/kernel/drivers/{bluetooth,parport,ssb,w1} || true
+    rm -rf ${R}/lib/modules/3.10.104/kernel/drivers/media/i2c || true
     echo "We need further shrink module directory"
     
     # /etc/fstab for proper mouting
