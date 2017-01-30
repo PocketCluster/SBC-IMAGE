@@ -87,7 +87,11 @@ EOM
 }
 
 # Set up initial sources.list
-function apt_sources() {
+function apt_setup() {
+    # tell APT not to install recommends & suggestion
+    if [ ! -d "${R}/etc/apt/apt.conf.d/" ]; then
+        mkdir ${R}/etc/apt/apt.conf.d/
+    fi
     cat <<EOM >$R/etc/apt/sources.list
 deb http://ports.ubuntu.com/ ${RELEASE} main restricted universe multiverse
 deb-src http://ports.ubuntu.com/ ${RELEASE} main restricted universe multiverse
@@ -101,21 +105,22 @@ deb-src http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe mu
 deb http://ports.ubuntu.com/ ${RELEASE}-backports main restricted universe multiverse
 deb-src http://ports.ubuntu.com/ ${RELEASE}-backports main restricted universe multiverse
 EOM
-
-    cat <<EOM >$R/etc/apt/apt.conf.d/50singleboards
+    cat <<EOM >${R}/etc/apt/apt.conf.d/50singleboards
 # Never use pdiffs, current implementation is very slow on low-powered devices
 Acquire::PDiffs "0";
 EOM
-}
+    cat <<EOM >${R}/etc/apt/apt.conf
+# APT::Install-Recommends "false";
+APT::Install-Suggests "false";
+EOM
 
-function apt_update_only() {
     chroot $R apt-get update
 }
 
 # Install Ubuntu Development
 function ubuntu_development() {
     # only the essentials
-    chroot $R apt-get -y install --no-install-suggests language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata dialog resolvconf
+    chroot $R apt-get -y install --no-install-suggests language-pack-en-base software-properties-common isc-dhcp-client udev netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata dialog resolvconf sudo
     # Config timezone, Keyboard, Console
     chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
     chroot $R dpkg-reconfigure --frontend=noninteractive debconf
@@ -343,8 +348,7 @@ function single_stage_build() {
     mount_system
 
     configure_network
-    apt_sources
-    apt_update_only
+    apt_setup
     ubuntu_development
     configure_ssh
     generate_locale
