@@ -42,3 +42,5 @@
 20. [ ] Apply techniques from [ReducingDiskFootprint](https://wiki.ubuntu.com/ReducingDiskFootprint) [PDF](DOCUMENT/ReducingDiskFootprint-UbuntuWiki.pdf).
 21. [ ] Install only the bare minimum _dependents_. *This has backfired to increase in size.
 22. [ ] Remove RaspberryPI VideoCore
+23. [ ] Check and make suder `docker.io.deb` package is static build. Otherwise, we're in trouble.
+  - We can now build `docker.io` within docker. We can only create daemon binary!
