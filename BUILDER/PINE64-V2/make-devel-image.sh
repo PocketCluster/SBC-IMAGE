@@ -77,8 +77,7 @@ EOM
     # make root filesystem
     ROOT_LOOP="$(losetup -o $((143360 * 512)) -f --show ${BASEDIR}/${IMAGE})"
     # https://blogofterje.wordpress.com/2012/01/14/optimizing-fs-on-sd-card/
-    #mkfs.ext4 -F -O ^has_journal -E stride=2,stripe-width=1024 -b 4096 -L PC_ROOT -U ${FS_ROOT_UUID} -m 0 "${ROOT_LOOP}"
-    mkfs.ext4 -F -b 4096 -E stride=2,stripe-width=1024 -L rootfs "${ROOT_LOOP}"
+    mkfs.ext4 -F -O ^has_journal -E stride=2,stripe-width=1024 -b 4096 -L PC_ROOT -U ${FS_ROOT_UUID} -m 5 "${ROOT_LOOP}"
     MOUNTDIR="${BUILDDIR}/mount"
     mkdir -p "${MOUNTDIR}"
     mount "${ROOT_LOOP}" "${MOUNTDIR}"
