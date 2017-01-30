@@ -23,9 +23,6 @@
 
 set -ex
 
-TARBALL="${DIST_NAME}-devel-arm64-pine64-rootfs-${RELEASE}.tar.bz2"
-IMAGE="${DIST_NAME}-devel-arm64-pine64-${RELEASE}.img"
-
 if [ -f build-settings.sh ]; then
     source build-settings.sh
 else
@@ -37,6 +34,9 @@ if [ $(id -u) -ne 0 ]; then
     echo "ERROR! Must be root."
     exit 1
 fi
+
+TARBALL="${DIST_NAME}-devel-arm64-pine64-rootfs-${RELEASE}.tar.bz2"
+IMAGE="${DIST_NAME}-devel-arm64-pine64-${RELEASE}.img"
 
 function make_pine64_image() {
     # Build the image file
