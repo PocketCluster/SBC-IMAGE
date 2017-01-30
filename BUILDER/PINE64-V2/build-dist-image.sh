@@ -47,10 +47,10 @@ function make_pine64_image() {
         exit 1
     fi
 
-    # SIZE_LIMIT -> (386 + 135) ~ 530 MB | SIZE -> 530 * 1024 * 1024 / 512 = 1085440     |  SEEK = SIZE_LIMIT * 1.1 = 583
-    SIZE_LIMIT=530
-    SIZE=1085440
-    SEEK=580
+    # SIZE_LIMIT -> (586 + 70) ~ 660 MB | SIZE -> 660 * 1024 * 1024 / 512 = 1351680     |  SEEK = SIZE_LIMIT * 1.1 = 726
+    SIZE_LIMIT=660
+    SIZE=1351680
+    SEEK=726
 
     # If a compress version exists, remove it.
     rm -f "${BASEDIR}/${IMAGE}.bz2" || true
