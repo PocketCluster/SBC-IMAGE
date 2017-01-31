@@ -140,15 +140,14 @@ function ubuntu_development() {
     chroot $R apt-get -y install python-pip python3-pip
 
     # Install golang
-    tar -xvzf ${PWD}/go-1.7.5.linux-arm7.tar.gz -C ${R}/opt
+    tar -xvzf ${PWD}/go-1.7.5.linux-armv7.tar.gz -C ${R}/opt
     chroot $R ln -s /opt/go-1.7.5 /opt/go
     mkdir -p ${R}/opt/gopkg/{src,pkg,bin}
     cat <<EOM >>${R}/etc/bash.bashrc
 if [ -d /opt/go ]; then
     export GOPATH=/opt/gopkg
-    export GOROOT=/opt/go
-#   how to escape this line? 
-#   export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+    export GOROOT=/opt/go 
+    export PATH=\$GOROOT/bin:\$GOPATH/bin:\$PATH
 fi
 EOM
 }

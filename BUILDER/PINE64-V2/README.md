@@ -1,4 +1,47 @@
-# How to remove junk in boot sector
+# Pine64 Image Builder V2
+
+**The development build process is substantially different from RPI or ODROID that it is smaller and less feature complete**
+
+We have faced a couple of issues.
+
+- Bootloader looks for specific root file system boundary such that if rootfs is bigger than certain limit, bootloader refuses to boot. 
+  - *This issue can be mitigated by shringking image size.
+  - V2 bootloader is ripped from `xubuntu-xenial-mate-20161215-longsleep-pine64-8GB.img.gz`
+- `3.10.104` does not support `CONFIG_VXLAN` out of box. _Kernel compile required_  
+- `/lib/firmware` contains unrelated stuffs to PINE64
+- `/lib/modules/3.10.104` is way too big
+
+Current build is based on Xenial 16.04.1. 
+
+**`build-settings.sh`**
+
+Build setting such as distro, directory, version & etc.   
+
+## Distribution
+
+**`build-dist-filetree.sh`**
+
+Distribution file tree. Image is in `/POCKET/SBC-IMG-BUILDER/PINE64`.  
+
+**`make-dist-image.sh`**
+
+Make dist image.  
+
+## Development
+
+**`build-devel-filetree.sh`**
+
+Development file tree. This will include more packages. Image is in `/POCKET/SBC-IMG-BUILDER/PINE64`.   
+
+**`make-devel-image.sh`**
+
+Make devel image.  
+
+## CONFIG_VXLAN Option
+
+Unsupported as of `3.10.104`
+
+## How to remove junk in boot sector
 
 ```sh
 # check where to start and where to end

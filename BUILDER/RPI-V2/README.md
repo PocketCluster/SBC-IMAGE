@@ -1,22 +1,34 @@
-# Raspberry PI 2/3 Image Builder
+# Raspberry PI 2/3 Image Builder V2 (ARMv7)
 
-### `build-setting.sh`  
+We build RPI images with Mate bootloader. This is most standard, straight forward way we can expect for baking image. Bootloader is donwloaded as deb package, and we will keep using for RPI3 support.
+
+Current build is based on Xenial 16.04.1
+
+**`build-settings.sh`**
 
 Build setting such as distro, directory, version & etc.   
 
-### `build-dist-filetree.sh`  
+## Distribution
 
-Distribution file tree. Base `Xenial` image is in `/POCKET/UBUNTU-BUILDER/BUILDER`.  
+**`build-dist-filetree.sh`**
 
-### `build-devel-filetree.sh`  
+Distribution file tree. Base `Xenial` image is in `/POCKET/SBC-IMG-BUILDER/RPI`.  
 
-Development file tree. This will include more packages. Base `Xenial` image is in `/POCKET/LINUX-BUILDER/BUILDER`.   
+**`make-dist-image.sh`**
 
-### `make-iso-image.sh`  
+Make dist image.  
 
-Make iso image.  
+## Development
 
-### `CONFIG_VXLAN` option
+**`build-devel-filetree.sh`**
+
+Development file tree. This will include more packages. Base `Xenial` image is in `/POCKET/SBC-IMG-BUILDER/RPI`.   
+
+**`make-devel-image.sh`**
+
+Make devel image.  
+
+## CONFIG_VXLAN Option
 
 For this option, please update rpi-firmware at least to `4.4.22-v7+`. or
 
