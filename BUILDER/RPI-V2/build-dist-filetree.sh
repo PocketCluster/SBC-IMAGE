@@ -36,21 +36,12 @@ if [ $(id -u) -ne 0 ]; then
 fi
 
 function unarchive_base_image() {
-    local BASE_IMAGE="${RELEASE}-base-armhf.tar.gz"
+    local BASE_IMAGE="${RELEASE}-base-${DEVICE_ARCH}.tar.gz"
     local TARGET="${1}"
     if [ ! -d "${TARGET}" ]; then
         mkdir -p "${TARGET}"
     fi
     tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET}
-}
-
-function sync_to() {
-    local TARGET="${1}"
-    if [ ! -d "${TARGET}" ]; then
-        mkdir -p "${TARGET}"
-    fi
-    #rsync -a --progress --delete ${R}/ ${TARGET}/
-    rsync -a --delete ${R}/ ${TARGET}/
 }
 
 # Mount host system
@@ -113,6 +104,9 @@ path-exclude /usr/share/linda/*
 # don't autocomplete
 path-exclude /usr/share/zsh/vendor-completions/*
 path-exclude /usr/share/bash-completion/completions/*
+# don't install translation
+path-exclude /usr/share/locale/*
+path-include /usr/share/locale/en*
 EOM
 
     # tell APT not to install recommends & suggestion
@@ -171,6 +165,9 @@ LC_CTYPE="UTF-8"
 LC_COLLATE="en_US.UTF-8"
 LC_ALL="en_US.UTF-8"
 EOM
+
+    # then remove existing translations
+    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
 
     for LOCALE in $(chroot $R locale | cut -d'=' -f2 | grep -v : | sed 's/"//g' | uniq); do
         if [ -n "${LOCALE}" ]; then
@@ -241,20 +238,21 @@ function setup_raspberry_specifics() {
     # Hardware - Create a fake HW clock and add rng-tools These are coming from official repo
     chroot $R apt-get -y install fake-hwclock rng-tools
     
-    chroot $R apt install -y --no-install-recommends --no-install-suggests software-properties-common curl binutils
-    chroot $R apt-add-repository -y ppa:ubuntu-pi-flavour-makers/ppa
-    chroot $R apt-get update
-
-    # Kernel installation
-    chroot $R apt-get -y install raspberrypi-bootloader
-    # Firmware (we'll skip as rpi-update handles it)
-    #chroot $R apt-get -y install raspberrypi-firmware
-
+    # Bootloader installation
+    cp ${PWD}/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb $R/tmp
+    chroot $R dpkg -i /tmp/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb
+    rm -rf $R/tmp/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb || true
+    # Remove all old modules
+    rm -rf "${R}/lib/modules/*" || true
+    
     # Firmware, Modules, Kernel 4.4.22-v7+
+    chroot $R apt install -y --no-install-recommends --no-install-suggests curl binutils
     wget -c https://raw.githubusercontent.com/Hexxeh/rpi-update/master/rpi-update -O $R/usr/bin/rpi-update
     chmod 755 $R/usr/bin/rpi-update
     chroot $R rpi-update d26c39bd353eb0ebbc7db3546277083eac4aa3bd
     rm $R/usr/bin/rpi-update
+    # clear of tools
+    chroot $R apt remove -y --purge curl binutils
 
     # Very minimal boot config
     #wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
@@ -284,9 +282,6 @@ EOM
 
     # Save the clock
     chroot $R fake-hwclock save
-
-    # clear of tools
-    chroot $R apt remove -y --purge software-properties-common curl binutils
 }
 
 function apt_clean() {
@@ -304,7 +299,6 @@ function clean_up() {
     rm -f $R/run/cups/cups.sock || true
     rm -f $R/run/uuidd/request || true
     rm -f $R/etc/*-
-    rm -rf $R/tmp/*
     # slash rest of residue
     rm -rf $R/tmp/* 
     rm -rf $R/var/tmp/*
@@ -333,18 +327,21 @@ function clean_up() {
     rm -rf ${R}/usr/share/lintian/* 
     rm -rf ${R}/usr/share/linda/* 
     rm -rf ${R}/var/cache/man/*
-    # make sure info directory is not broken for dep check
-    mkdir -p ${R}/usr/share/info
-
     # remove auto-completion
     rm -rf ${R}/usr/share/zsh/vendor-completions/*
     rm -rf ${R}/usr/share/bash-completion/completions/*
+    # then remove existing translations
+    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
+    # make sure info directory is not broken for dep check
+    mkdir -p ${R}/usr/share/info
 
     # Clean up old firmware and modules
     rm -f $R/boot/.firmware_revision || true
     rm -rf $R/boot.bak || true
 
-    # non-existent at this poin
+    # Remove old modules
+    echo "!!! ALWAYS CHECK IF OLD MODULE IS REMAINED !!!"
+    rm -rf $R/lib/modules/4.1.19* || true
     rm -rf $R/lib/modules.bak || true
 
     # Potentially sensitive.
@@ -367,13 +364,6 @@ function clean_up() {
     rm -rf $R/tmp/.bootstrap || true
     rm -rf $R/tmp/.minimal || true
     rm -rf $R/tmp/.standard || true
-
-    # reduce the source to official only
-    cat <<EOM >$R/etc/apt/sources.list
-deb http://ports.ubuntu.com/ ${RELEASE} main restricted universe
-deb http://ports.ubuntu.com/ ${RELEASE}-updates main restricted universe
-deb http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe
-EOM
 }
 
 # Unmount host system
@@ -385,13 +375,10 @@ function umount_system() {
 }
 
 function single_stage_build() {
-    R="${BASE_R}"
-    #check_crossbuild_req
-    unarchive_base_image ${R}
-    sync_to "${DEVICE_R}"
-
     R="${DEVICE_R}"
+    unarchive_base_image ${R}
     mount_system
+
     configure_network
     apt_setup
     ubuntu_essential

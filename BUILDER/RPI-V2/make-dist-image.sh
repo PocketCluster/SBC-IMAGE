@@ -70,7 +70,8 @@ EOM
     ROOT_LOOP="$(losetup -o 65M --sizelimit ${SIZE_LIMIT}M -f --show ${BASEDIR}/${IMAGE})"
     mkfs.vfat -n PC_BOOT -S 512 -s 16 -v "${BOOT_LOOP}"
     if [ "${FS}" == "ext4" ]; then
-        mkfs.ext4 -L PC_ROOT -m 0 "${ROOT_LOOP}"
+        # https://blogofterje.wordpress.com/2012/01/14/optimizing-fs-on-sd-card/
+        mkfs.ext4 -F -O ^has_journal -E stride=2,stripe-width=1024 -b 4096 -L PC_ROOT -U ${FS_ROOT_UUID} -m 5 "${ROOT_LOOP}"
     else
         mkfs.f2fs -l PC_ROOT -o 1 "${ROOT_LOOP}"
     fi

@@ -30,13 +30,13 @@ else
     exit 1
 fi
 
-TARBALL="${DIST_NAME}-devel-arm64-rootfs-${RELEASE}.tar.bz2"
-IMAGE="${DIST_NAME}-devel-arm64-odroid-${RELEASE}.img"
-
 if [ $(id -u) -ne 0 ]; then
     echo "ERROR! Must be root."
     exit 1
 fi
+
+TARBALL="${DIST_NAME}-devel-arm64-odroid-rootfs-${RELEASE}.tar.bz2"
+IMAGE="${DIST_NAME}-devel-arm64-odroid-${RELEASE}.img"
 
 function make_odroidc2_image() {
     # Build the image file
@@ -80,7 +80,8 @@ EOM
 
     # make root filesystem
     ROOT_LOOP="$(losetup -o $((264192 * 512)) -f --show ${BASEDIR}/${IMAGE})"
-    mkfs.ext4 -O ^has_journal -b 4096 -L PC_ROOT -U ${FS_ROOT_UUID} -m 0 "${ROOT_LOOP}" 
+    # https://blogofterje.wordpress.com/2012/01/14/optimizing-fs-on-sd-card/
+    mkfs.ext4 -F -O ^has_journal -E stride=2,stripe-width=1024 -b 4096 -L PC_ROOT -U ${FS_ROOT_UUID} -m 5 "${ROOT_LOOP}"
     MOUNTDIR="${BUILDDIR}/mount"
     mkdir -p "${MOUNTDIR}"
     mount "${ROOT_LOOP}" "${MOUNTDIR}"

@@ -30,13 +30,13 @@ else
     exit 1
 fi
 
-TARBALL="${DIST_NAME}-dist-arm64-rootfs-${RELEASE}.tar.bz2"
-IMAGE="${DIST_NAME}-dist-arm64-odroid-${RELEASE}.img"
-
 if [ $(id -u) -ne 0 ]; then
     echo "ERROR! Must be root."
     exit 1
 fi
+
+TARBALL="${DIST_NAME}-dist-arm64-odroid-rootfs-${RELEASE}.tar.bz2"
+IMAGE="${DIST_NAME}-dist-arm64-odroid-${RELEASE}.img"
 
 function make_odroidc2_image() {
     # Build the image file
@@ -47,10 +47,10 @@ function make_odroidc2_image() {
         exit 1
     fi
 
-    # SIZE_LIMIT -> (407 + 135) ~ 550 MB | SIZE -> 550 * 1024 * 1024 / 512 = 1126400     |  SEEK = SIZE_LIMIT * 1.1 = 600
-    SIZE_LIMIT=550
-    SIZE=1126400
-    SEEK=600
+    # SIZE_LIMIT -> (386 + 135) ~ 530 MB | SIZE -> 530 * 1024 * 1024 / 512 = 1085440     |  SEEK = SIZE_LIMIT * 1.1 = 583
+    SIZE_LIMIT=530
+    SIZE=1085440
+    SEEK=580
 
     # If a compress version exists, remove it.
     rm -f "${BASEDIR}/${IMAGE}.bz2" || true
@@ -76,7 +76,8 @@ EOM
 
     # make root filesystem
     ROOT_LOOP="$(losetup -o $((264192 * 512)) -f --show ${BASEDIR}/${IMAGE})"
-    mkfs.ext4 -O ^has_journal -b 4096 -L PC_ROOT -U ${FS_ROOT_UUID} -m 0 "${ROOT_LOOP}" 
+    # https://blogofterje.wordpress.com/2012/01/14/optimizing-fs-on-sd-card/
+    mkfs.ext4 -F -O ^has_journal -E stride=2,stripe-width=1024 -b 4096 -L PC_ROOT -U ${FS_ROOT_UUID} -m 5 "${ROOT_LOOP}"
     MOUNTDIR="${BUILDDIR}/mount"
     mkdir -p "${MOUNTDIR}"
     mount "${ROOT_LOOP}" "${MOUNTDIR}"
