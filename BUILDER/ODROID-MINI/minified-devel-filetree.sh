@@ -35,30 +35,6 @@ if [ $(id -u) -ne 0 ]; then
     exit 1
 fi
 
-# Base debootstrap
-function bootstrap() {
-    # Required tools
-    apt-get -y install binfmt-support debootstrap f2fs-tools qemu-user-static rsync ubuntu-keyring wget whois
-
-    # Use the same base system for all flavours.
-    if [ ! -f "${R}/tmp/.bootstrap" ]; then
-        if [ "${ARCH}" == ${DEVICE_ARCH} ]; then
-            debootstrap --variant=minbase --verbose $RELEASE $R http://ports.ubuntu.com/
-        else
-            qemu-debootstrap --variant=minbase --verbose --arch=arm64 $RELEASE $R http://ports.ubuntu.com/
-        fi
-        touch "$R/tmp/.bootstrap"
-    fi
-}
-
-function check_crossbuild_req() {
-    # Required tools
-    if [ ${ARCH} != ${DEVICE_ARCH} ]; then
-        apt-get -y install binfmt-support debootstrap f2fs-tools qemu-user-static rsync ubuntu-keyring wget whois
-        update-binfmts --enable qemu-${DEVICE_ARCH}
-    fi
-}
-
 function unarchive_base_image() {
     local BASE_IMAGE="${RELEASE}-base-arm64.tar.gz"
     local TARGET="${1}"
@@ -66,15 +42,6 @@ function unarchive_base_image() {
         mkdir -p "${TARGET}"
     fi
     tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET}
-}
-
-function sync_to() {
-    local TARGET="${1}"
-    if [ ! -d "${TARGET}" ]; then
-        mkdir -p "${TARGET}"
-    fi
-    #rsync -a --progress --delete ${R}/ ${TARGET}/
-    rsync -a --delete ${R}/ ${TARGET}/
 }
 
 # Mount host system
@@ -120,7 +87,11 @@ EOM
 }
 
 # Set up initial sources.list
-function apt_sources() {
+function apt_setup() {
+    # tell APT not to install recommends & suggestion
+    if [ ! -d "${R}/etc/apt/apt.conf.d/" ]; then
+        mkdir ${R}/etc/apt/apt.conf.d/
+    fi
     cat <<EOM >$R/etc/apt/sources.list
 deb http://ports.ubuntu.com/ ${RELEASE} main restricted universe multiverse
 deb-src http://ports.ubuntu.com/ ${RELEASE} main restricted universe multiverse
@@ -134,21 +105,22 @@ deb-src http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe mu
 deb http://ports.ubuntu.com/ ${RELEASE}-backports main restricted universe multiverse
 deb-src http://ports.ubuntu.com/ ${RELEASE}-backports main restricted universe multiverse
 EOM
-
-    cat <<EOM >$R/etc/apt/apt.conf.d/50singleboards
+    cat <<EOM >${R}/etc/apt/apt.conf.d/50singleboards
 # Never use pdiffs, current implementation is very slow on low-powered devices
 Acquire::PDiffs "0";
 EOM
-}
+    cat <<EOM >${R}/etc/apt/apt.conf
+# APT::Install-Recommends "false";
+APT::Install-Suggests "false";
+EOM
 
-function apt_update_only() {
     chroot $R apt-get update
 }
 
 # Install Ubuntu Development
 function ubuntu_development() {
     # only the essentials
-    chroot $R apt-get -y install dialog language-pack-en-base software-properties-common udev wget sudo whois less f2fs-tools vim nano htop rsync python-pip dosfstools
+    chroot $R apt-get -y install dialog language-pack-en-base software-properties-common udev wget sudo whois less vim nano htop rsync python-pip dosfstools lsof
     chroot $R apt-get -y install isc-dhcp-client netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata build-essential
     # Config timezone, Keyboard, Console
     chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
@@ -161,6 +133,24 @@ function ubuntu_development() {
 
     # system hang prevention
     chroot $R apt-get -y install libpam-systemd dbus
+
+    # Python
+    chroot $R apt-get -y install python-minimal python3-minimal
+    chroot $R apt-get -y install python-dev python3-dev
+    chroot $R apt-get -y install python-pip python3-pip
+
+    # Install golang
+    tar -xvzf ${PWD}/go-1.7.5.linux-arm64.tar.gz -C ${R}/opt
+    chroot $R ln -s /opt/go-1.7.5 /opt/go
+    mkdir -p ${R}/opt/gopkg/{src,pkg,bin}
+    cat <<EOM >>${R}/etc/bash.bashrc
+if [ -d /opt/go ]; then
+    export GOPATH=/opt/gopkg
+    export GOROOT=/opt/go
+#   how to escape this line? 
+#   export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+fi
+EOM
 }
 
 function configure_ssh() {
@@ -212,10 +202,7 @@ LC_COLLATE="en_US.UTF-8"
 LC_ALL="en_US.UTF-8"
 EOM
 
-    # Doesn't work ;(
-    #cp -Rf $R/usr/share/locale/en* $R/tmp/
-    #rm -rf $R/usr/share/locale/*
-    #mv $R/tmp/en* $R/usr/share/locale/
+    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
 
     for LOCALE in $(chroot $R locale | cut -d'=' -f2 | grep -v : | sed 's/"//g' | uniq); do
         if [ -n "${LOCALE}" ]; then
@@ -263,7 +250,7 @@ EOM
     chmod +x $R/usr/local/sbin/adduser.local
 }
 
-# Create default user !!! This will be removed in release image as it will not properly create login profile for the real user. !!!
+# in devel file tree docker group has to be added
 # Is this related to rc.local service???
 function create_user() {
     local DIST_USERNAME="pocket"
@@ -272,8 +259,8 @@ function create_user() {
     local PASSWD=$(mkpasswd -m sha-512 ${DIST_USERNAME} ${DATE})
 
     chroot $R addgroup --gid 29999 ${DIST_USERGROUP}
-    chroot $R adduser --gecos "PocketCluster (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
-    chroot $R usermod -a -G sudo -p ${PASSWD} ${DIST_USERNAME}
+    chroot $R adduser --gecos "PocketCluster (admin user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
+    chroot $R usermod -a -G sudo,docker -p ${PASSWD} ${DIST_USERNAME}
 
     echo "pocket ALL=(ALL) NOPASSWD:ALL" > $R/etc/sudoers.d/pocket
 }
@@ -299,8 +286,9 @@ EOM
 }
 
 function apt_clean() {
-    chroot $R apt-get -y autoremove --purge
-    chroot $R apt-get clean
+    chroot $R apt-get autoremove -y --purge
+    chroot $R apt-get clean -y
+    chroot $R apt-get autoclean -y 
 }
 
 function clean_up() {
@@ -312,19 +300,31 @@ function clean_up() {
     rm -f $R/run/cups/cups.sock || true
     rm -f $R/run/uuidd/request || true
     rm -f $R/etc/*-
-    rm -rf $R/tmp/*
+    # slash rest of residue
+    rm -rf $R/tmp/* 
+    rm -rf $R/var/tmp/*
     rm -f $R/var/crash/*
     rm -f $R/var/lib/urandom/random-seed
 
     # clean up locales and apt cache
     rm -rf $R/var/cache/debconf/*-old
     rm -rf $R/var/lib/apt/lists/*
+    rm -rf $R/var/lib/cache/*
+    # remove logs as well.
+    rm -rf $R/var/log/*
+
+    # Remove apt cache indexes https://wiki.ubuntu.com/ReducingDiskFootprint
+    # Apt stores two caches in /var/cache/apt/: srcpkgcache.bin is rather useless these days, and pkgcache.bin is only needed for faster lookups with apt-cache (software-center has its own cache). 
+    # Removing those two buys 50 MB, for the price of apt-cache taking an extra two seconds for each lookup.
+    rm -rf $R/var/cache/apt/pkgcache.bin || true
+    rm -rf $R/var/cache/apt/srcpkgcache.bin || true
 
     # Clean up old firmware and modules
     rm -f $R/boot/.firmware_revision || true
     rm -rf $R/boot.bak || true
 
     # non-existent at this point
+    echo "!!! ALWAYS CHECK IF OLD MODULE IS REMAINED !!!"
     #rm -rf $R/lib/modules/4.1.7* || true
     rm -rf $R/lib/modules.bak || true
 
@@ -344,10 +344,6 @@ function clean_up() {
     if [ -e $R/etc/ld.so.preload.disable ]; then
         mv -v $R/etc/ld.so.preload.disable $R/etc/ld.so.preload
     fi
-
-    rm -rf $R/tmp/.bootstrap || true
-    rm -rf $R/tmp/.minimal || true
-    rm -rf $R/tmp/.standard || true
 }
 
 # Unmount host system
@@ -358,17 +354,13 @@ function umount_system() {
     umount -l $R/dev
 }
 
-function single_stage_odroid() {
-    R="${BASE_R}"
-    #check_crossbuild_req
-    unarchive_base_image ${R}
-    sync_to "${DEVICE_R}"
-
+function single_stage_build() {
     R="${DEVICE_R}"
+    unarchive_base_image ${R}    
     mount_system
+
     configure_network
-    apt_sources
-    apt_update_only
+    apt_setup
     ubuntu_development
     configure_ssh
     generate_locale
@@ -383,4 +375,4 @@ function single_stage_odroid() {
     umount_system
 }
 
-single_stage_odroid
+single_stage_build

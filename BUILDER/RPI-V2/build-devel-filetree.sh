@@ -35,30 +35,6 @@ if [ $(id -u) -ne 0 ]; then
     exit 1
 fi
 
-# Base debootstrap
-function bootstrap() {
-    # Required tools
-    apt-get -y install binfmt-support debootstrap f2fs-tools qemu-user-static rsync ubuntu-keyring wget whois
-
-    # Use the same base system for all flavours.
-    if [ ! -f "${R}/tmp/.bootstrap" ]; then
-        if [ "${ARCH}" == ${DEVICE_ARCH} ]; then
-            debootstrap --variant=minbase --verbose $RELEASE $R http://ports.ubuntu.com/
-        else
-            qemu-debootstrap --variant=minbase --verbose --arch=arm64 $RELEASE $R http://ports.ubuntu.com/
-        fi
-        touch "$R/tmp/.bootstrap"
-    fi
-}
-
-function check_crossbuild_req() {
-    # Required tools
-    if [ ${ARCH} != ${DEVICE_ARCH} ]; then
-        apt-get -y install binfmt-support debootstrap f2fs-tools qemu-user-static rsync ubuntu-keyring wget whois
-        update-binfmts --enable qemu-${DEVICE_ARCH}
-    fi
-}
-
 function unarchive_base_image() {
     local BASE_IMAGE="${RELEASE}-base-armhf.tar.gz"
     local TARGET="${1}"
@@ -66,15 +42,6 @@ function unarchive_base_image() {
         mkdir -p "${TARGET}"
     fi
     tar -xvzf "${PWD}/../${BASE_IMAGE}" -C ${TARGET}
-}
-
-function sync_to() {
-    local TARGET="${1}"
-    if [ ! -d "${TARGET}" ]; then
-        mkdir -p "${TARGET}"
-    fi
-    #rsync -a --progress --delete ${R}/ ${TARGET}/
-    rsync -a --delete ${R}/ ${TARGET}/
 }
 
 # Mount host system
@@ -153,7 +120,7 @@ EOM
 # Install Ubuntu Development
 function ubuntu_development() {
     # only the essentials
-    chroot $R apt-get -y install dialog language-pack-en-base software-properties-common udev wget sudo whois less f2fs-tools vim nano htop rsync python-pip dosfstools lsof
+    chroot $R apt-get -y install dialog language-pack-en-base software-properties-common udev wget sudo whois less vim nano htop rsync python-pip dosfstools lsof
     chroot $R apt-get -y install isc-dhcp-client netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata build-essential
     # Config timezone, Keyboard, Console
     chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
@@ -171,6 +138,19 @@ function ubuntu_development() {
     chroot $R apt-get -y install python-minimal python3-minimal
     chroot $R apt-get -y install python-dev python3-dev
     chroot $R apt-get -y install python-pip python3-pip
+
+    # Install golang
+    tar -xvzf ${PWD}/go-1.7.5.linux-arm7.tar.gz -C ${R}/opt
+    chroot $R ln -s /opt/go-1.7.5 /opt/go
+    mkdir -p ${R}/opt/gopkg/{src,pkg,bin}
+    cat <<EOM >>${R}/etc/bash.bashrc
+if [ -d /opt/go ]; then
+    export GOPATH=/opt/gopkg
+    export GOROOT=/opt/go
+#   how to escape this line? 
+#   export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+fi
+EOM
 }
 
 function configure_ssh() {
@@ -221,6 +201,8 @@ LC_CTYPE="UTF-8"
 LC_COLLATE="en_US.UTF-8"
 LC_ALL="en_US.UTF-8"
 EOM
+
+    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
 
     for LOCALE in $(chroot $R locale | cut -d'=' -f2 | grep -v : | sed 's/"//g' | uniq); do
         if [ -n "${LOCALE}" ]; then
@@ -276,7 +258,7 @@ function create_user() {
     local PASSWD=$(mkpasswd -m sha-512 ${DIST_USERNAME} ${DATE})
 
     chroot $R addgroup --gid 29999 ${DIST_USERGROUP}
-    chroot $R adduser --gecos "PocketCluster (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
+    chroot $R adduser --gecos "PocketCluster (admin user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
     chroot $R usermod -a -G sudo,docker -p ${PASSWD} ${DIST_USERNAME}
 
     echo "pocket ALL=(ALL) NOPASSWD:ALL" > $R/etc/sudoers.d/pocket
@@ -290,17 +272,23 @@ function setup_raspberry_specifics() {
     fi
 
     # Hardware - Create a fake HW clock and add rng-tools These are coming from official repo
-    chroot $R apt-get -y install fake-hwclock rng-tools linux-firmware curl binutils
-    chroot $R apt-add-repository -y ppa:ubuntu-pi-flavour-makers/ppa
-    chroot $R apt-get update
-
-    # Kernel installation
-    chroot $R apt-get -y install raspberrypi-bootloader
-
+    chroot $R apt-get -y install fake-hwclock rng-tools
+    
+    # Bootloader installation
+    cp ${PWD}/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb $R/tmp
+    chroot $R dpkg -i /tmp/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb
+    rm -rf $R/tmp/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb || true
+    # Remove all old modules
+    rm -rf "${R}/lib/modules/*" || true
+    
     # Firmware, Modules, Kernel 4.4.22-v7+
+    chroot $R apt install -y --no-install-recommends --no-install-suggests curl binutils
     wget -c https://raw.githubusercontent.com/Hexxeh/rpi-update/master/rpi-update -O $R/usr/bin/rpi-update
     chmod 755 $R/usr/bin/rpi-update
     chroot $R rpi-update d26c39bd353eb0ebbc7db3546277083eac4aa3bd
+    rm $R/usr/bin/rpi-update
+    # clear of tools
+    chroot $R apt remove -y --purge curl binutils
 
     # Very minimal boot config
     #wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
@@ -347,7 +335,9 @@ function clean_up() {
     rm -f $R/run/cups/cups.sock || true
     rm -f $R/run/uuidd/request || true
     rm -f $R/etc/*-
-    rm -rf $R/tmp/*
+    # slash rest of residue
+    rm -rf $R/tmp/* 
+    rm -rf $R/var/tmp/*
     rm -f $R/var/crash/*
     rm -f $R/var/lib/urandom/random-seed
 
@@ -389,10 +379,6 @@ function clean_up() {
     if [ -e $R/etc/ld.so.preload.disable ]; then
         mv -v $R/etc/ld.so.preload.disable $R/etc/ld.so.preload
     fi
-
-    rm -rf $R/tmp/.bootstrap || true
-    rm -rf $R/tmp/.minimal || true
-    rm -rf $R/tmp/.standard || true
 }
 
 # Unmount host system
@@ -403,14 +389,11 @@ function umount_system() {
     umount -l $R/dev
 }
 
-function single_stage_odroid() {
-    R="${BASE_R}"
-    #check_crossbuild_req
-    unarchive_base_image ${R}
-    sync_to "${DEVICE_R}"
-
+function single_stage_build() {
     R="${DEVICE_R}"
+    unarchive_base_image ${R}
     mount_system
+
     configure_network
     apt_setup
     ubuntu_development
@@ -427,4 +410,4 @@ function single_stage_odroid() {
     umount_system
 }
 
-single_stage_odroid
+single_stage_build
