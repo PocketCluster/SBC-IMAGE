@@ -93,7 +93,8 @@ We can further automate this process for CI.
   ```sh  
   tar ./odroid-modules-3.14.79-102.tar.gz /mnt/lib/modules/3.14.79-102/
   ```
-7. Capture kernel config (This need to be done with actual boot. Take what's available in `/boot/`)
+7. Capture **`/etc/fstab`** to mount disk properly.  
+8. Capture kernel config (This need to be done with actual boot. Take what's available in `/boot/`)
 
 > Reference
 

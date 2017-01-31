@@ -11,7 +11,9 @@ We have faced a couple of issues.
 - `/lib/firmware` contains unrelated stuffs to PINE64
 - `/lib/modules/3.10.104` is way too big
 - `eth0` mac address is hard-coded in `/boot/uEnv.txt`. 
-  > e.g) ethaddr=ba:88:8e:64:aa:78
+
+  > ethaddr=ba:88:8e:64:aa:78
+- Cannot acquire partition table properly from fdisk. (i.e. the first sector is 2048 wherever you start)
 
 Current build is based on Xenial 16.04.1. 
 
