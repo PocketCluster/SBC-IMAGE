@@ -10,6 +10,8 @@ We have faced a couple of issues.
 - `3.10.104` does not support `CONFIG_VXLAN` out of box. _Kernel compile required_  
 - `/lib/firmware` contains unrelated stuffs to PINE64
 - `/lib/modules/3.10.104` is way too big
+- `eth0` mac address is hard-coded in `/boot/uEnv.txt`. 
+  > e.g) ethaddr=ba:88:8e:64:aa:78
 
 Current build is based on Xenial 16.04.1. 
 
