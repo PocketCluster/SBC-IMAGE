@@ -147,8 +147,7 @@ function ubuntu_development() {
 if [ -d /opt/go ]; then
     export GOPATH=/opt/gopkg
     export GOROOT=/opt/go
-#   how to escape this line? 
-#   export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
+    export PATH=\$GOROOT/bin:\$GOPATH/bin:\$PATH
 fi
 EOM
 }
