@@ -183,7 +183,7 @@ LC_COLLATE="en_US.UTF-8"
 LC_ALL="en_US.UTF-8"
 EOM
 
-    cat <<EOM >/etc/locale.gen
+    cat <<EOM >${R}/etc/locale.gen
 # This file lists locales that you wish to have built. You can find a list
 # of valid supported locales at /usr/share/i18n/SUPPORTED, and you can add
 # user defined locales to /usr/local/share/i18n/SUPPORTED. If you change
