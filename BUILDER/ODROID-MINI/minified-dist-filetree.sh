@@ -184,7 +184,7 @@ EOM
 
     chroot $R dpkg-reconfigure --frontend=noninteractive locales
 
-    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en*' | xargs rm -rf
+    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
 }
 
 function docker_setup() {
