@@ -245,12 +245,11 @@ function setup_odroid_specifics() {
     # /lib/modules/3.14.79-102
     mkdir -p $R/lib/modules/
     tar -xzf ../CAPTURED-BOOT/ODROID/odroid-modules-3.14.79-102.tar.gz -C $R/lib/modules/
-    
-    # /boot directory
-    tar -xzf ../CAPTURED-BOOT/ODROID/BOOTDIR-C2-3.14.79-102-20170125.tar.gz -C $R/
 
+    # setup fstab    
     cat <<EOM >$R/etc/fstab
-UUID=${FS_ROOT_UUID} / ext4 errors=remount-ro,noatime 0 1
+UUID=${FS_ROOT_UUID} /         ext4    errors=remount-ro,noatime    0    1
+/dev/mmcblk0p1       /boot/    vfat    defaults                     0    2
 EOM
 }
 
