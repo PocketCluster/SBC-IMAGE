@@ -166,8 +166,14 @@ LC_COLLATE="en_US.UTF-8"
 LC_ALL="en_US.UTF-8"
 EOM
 
-    # then remove existing translations
-    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
+    cat <<EOM >${R}/etc/locale.gen
+# This file lists locales that you wish to have built. You can find a list
+# of valid supported locales at /usr/share/i18n/SUPPORTED, and you can add
+# user defined locales to /usr/local/share/i18n/SUPPORTED. If you change
+# this file, you need to rerun locale-gen.
+
+en_US.UTF-8 UTF-8
+EOM
 
     for LOCALE in $(chroot $R locale | cut -d'=' -f2 | grep -v : | sed 's/"//g' | uniq); do
         if [ -n "${LOCALE}" ]; then
@@ -175,7 +181,10 @@ EOM
             chroot $R update-locale LC_ALL=$LOCALE
         fi
     done
+
     chroot $R dpkg-reconfigure --frontend=noninteractive locales
+
+    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
 }
 
 function docker_setup() {

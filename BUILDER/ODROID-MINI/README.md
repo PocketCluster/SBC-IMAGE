@@ -38,6 +38,33 @@ Make iso image with ripped off bootloader from official image `ubuntu64-16.04lts
 - [Korea Mirror](http://dn.odroid.com/S905/Ubuntu/)
 - [Flashing HOWTO](http://odroid.com/dokuwiki/doku.php?id=en:odroid_flashing_tools)
 
+**How to remove junk in boot sector**
+
+```sh
+$ fdisk -l BOOTLOADER-C2-3.14.79-102-20170125.img
+
+Disk BOOTLOADER-C2-3.14.79-102-20170125.img: 129 MiB, 135266304 bytes, 264192 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0xd3630000
+
+Device                                  Boot  Start      End  Sectors  Size Id Type
+BOOTLOADER-C2-3.14.79-102-20170125.img1        2048   264191   262144  128M  c W95 FAT32 (LBA)
+BOOTLOADER-C2-3.14.79-102-20170125.img2      264192 11323391 11059200  5.3G 83 Linux
+
+
+$ export BOOT_LOOP="$(losetup --offset $((2048 * 512)) --sizelimit $((264192 * 512)) -f --show ${PWD}/BOOTLOADER-C2-3.14.79-102-20170125.img)"
+$ export BOOT_MOUNT="${PWD}/boot"
+$ mount "${BOOT_LOOP}" "${BOOT_MOUNT}"
+
+
+... delete, copy, modify whatever you want...
+
+umount -l "${BOOT_MOUNT}"
+losetup -d "${BOOT_LOOP}"
+```
 
 **Capture Bootloader from Downloaded `.img` file w/o baking**
 

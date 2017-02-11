@@ -67,7 +67,7 @@ export BOOT_LOOP="$(losetup --offset $((40960 * 512)) --sizelimit $((143360 * 51
 export BOOT_MOUNT="${PWD}/boot"
 mount "${BOOT_LOOP}" "${BOOT_MOUNT}"
 
-... delete, remove, modify whatever you want...
+... delete, copy, modify whatever you want...
 
 umount -l "${BOOT_MOUNT}"
 losetup -d "${BOOT_LOOP}"
