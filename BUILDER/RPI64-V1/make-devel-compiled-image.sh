@@ -46,29 +46,34 @@ function make_raspi2_image() {
         exit 1
     fi
 
-    # SIZE_LIMIT -> (850M + 64M) ~ 1200 MB | SIZE -> 1500 * 1024 * 1024 / 512 = 2457600 |  SEEK = SIZE_LIMIT * 1.2 = 1440
+    # SIZE_LIMIT -> (1100 + 200M) ~ 1200 MB | SIZE -> 1500 * 1024 * 1024 / 512 = 2457600 |  SEEK = SIZE_LIMIT * 1.0 = 1200 
     SIZE_LIMIT=1200
-    SIZE=2457600
-    SEEK=1440
 
+    # !!! this is the actual size of rootfs partition (we need to count the last sector as well with + 1) !!!
+    # ROOT_SIZE -> SIZE - ROOT PARTITION START SECTOR (133120) + 1
+    ROOT_SIZE=$(( (${SIZE_LIMIT} * 1024 * 1024 / 512) - 133120 + 1 ))
+    echo "ROOT_FS_SIZE is ${ROOT_SIZE}"
+    
     # If a compress version exists, remove it.
     rm -f "${BASEDIR}/${IMAGE}.bz2" || true
 
     dd if=/dev/zero of="${BASEDIR}/${IMAGE}" bs=1M count=1
-    dd if=/dev/zero of="${BASEDIR}/${IMAGE}" bs=1M count=0 seek=${SEEK}
+    dd if=/dev/zero of="${BASEDIR}/${IMAGE}" bs=1M count=0 seek=${SIZE_LIMIT}
 
     sfdisk -f "$BASEDIR/${IMAGE}" <<EOM
 unit: sectors
 
 1 : start=     2048, size=   131072, Id= c, bootable
-2 : start=   133120, size=  ${SIZE}, Id=83
+2 : start=   133120, size=  ${ROOT_SIZE}, Id=83
 3 : start=        0, size=        0, Id= 0
 4 : start=        0, size=        0, Id= 0
 EOM
 
-    BOOT_LOOP="$(losetup -o 1M --sizelimit 64M -f --show ${BASEDIR}/${IMAGE})"
-    ROOT_LOOP="$(losetup -o 65M --sizelimit ${SIZE_LIMIT}M -f --show ${BASEDIR}/${IMAGE})"
+
+    BOOT_LOOP="$(losetup --offset $((2048 * 512)) --sizelimit $((131072 * 512)) -f --show ${BASEDIR}/${IMAGE})"
     mkfs.vfat -n PC_BOOT -S 512 -s 16 -v "${BOOT_LOOP}"
+
+    ROOT_LOOP="$(losetup --offset $((133120 * 512)) --sizelimit $((${ROOT_SIZE} * 512)) -f --show ${BASEDIR}/${IMAGE})"
     if [ "${FS}" == "ext4" ]; then
         # https://blogofterje.wordpress.com/2012/01/14/optimizing-fs-on-sd-card/
         mkfs.ext4 -F -O ^has_journal -E stride=2,stripe-width=1024 -b 4096 -L PC_ROOT -U ${FS_ROOT_UUID} -m 5 "${ROOT_LOOP}"
