@@ -69,10 +69,11 @@ unit: sectors
 4 : start=        0, size=        0, Id= 0
 EOM
 
-
+    # BOOT FS SETUP
     BOOT_LOOP="$(losetup --offset $((2048 * 512)) --sizelimit $((131072 * 512)) -f --show ${BASEDIR}/${IMAGE})"
     mkfs.vfat -n PC_BOOT -S 512 -s 16 -v "${BOOT_LOOP}"
 
+    # ROOT FS SETUP
     ROOT_LOOP="$(losetup --offset $((133120 * 512)) --sizelimit $((${ROOT_SIZE} * 512)) -f --show ${BASEDIR}/${IMAGE})"
     if [ "${FS}" == "ext4" ]; then
         # https://blogofterje.wordpress.com/2012/01/14/optimizing-fs-on-sd-card/
@@ -80,6 +81,8 @@ EOM
     else
         mkfs.f2fs -l PC_ROOT -o 1 "${ROOT_LOOP}"
     fi
+
+    # SYNC
     MOUNTDIR="${BUILDDIR}/mount"
     mkdir -p "${MOUNTDIR}"
     mount "${ROOT_LOOP}" "${MOUNTDIR}"

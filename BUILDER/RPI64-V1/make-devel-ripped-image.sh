@@ -48,23 +48,22 @@ function make_raspi2_image() {
 
     # SIZE_LIMIT -> (1100 + 200M) ~ 1400 MB | SIZE -> 1500 * 1024 * 1024 / 512 = 2867200 |  SEEK = SIZE_LIMIT * 1.0 = 1400
     SIZE_LIMIT=1400
-    SIZE=2867200
-    SEEK=1400
+
+    # !!! this is the actual size of rootfs partition (we need to count the last sector as well with + 1) !!!
+    # ROOT_SIZE -> SIZE - ROOT PARTITION START SECTOR (413696) + 1
+    ROOT_SIZE=$(( (${SIZE_LIMIT} * 1024 * 1024 / 512) - 413696 + 1 ))
+    echo "ROOT_FS_SIZE is ${ROOT_SIZE}"
 
     # If a compress version exists, remove it.
     rm -f "${BASEDIR}/${IMAGE}.bz2" || true
 
     dd if=/dev/zero of="${BASEDIR}/${IMAGE}" bs=1M count=1
-    dd if=/dev/zero of="${BASEDIR}/${IMAGE}" bs=1M count=0 seek=${SEEK}
+    dd if=/dev/zero of="${BASEDIR}/${IMAGE}" bs=1M count=0 seek=${SIZE_LIMIT}
 
     # Copying the original bootloader
     TOP_LOOP="$(losetup -o 0 --sizelimit $((411652 * 512)) -f --show ${BASEDIR}/${IMAGE})"
     dd if=${PWD}/../CAPTURED-BOOT/RPI64/BOOTLOADER-RPI64-OSUSE-Leap42.2-20170806.img of=${TOP_LOOP} bs=512 count=411652
     losetup -d "${TOP_LOOP}"
-
-    # !!! this is the actual size of rootfs partition (we need to count the last sector as well with + 1) !!!
-    ROOT_SIZE=$((${SIZE} - 413696 + 1))
-    echo "ROOT_FS_SIZE is ${ROOT_SIZE}"
 
     sfdisk -f "$BASEDIR/${IMAGE}" <<EOM
 unit: sectors
