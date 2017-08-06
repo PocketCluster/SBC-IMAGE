@@ -35,8 +35,8 @@ if [ $(id -u) -ne 0 ]; then
     exit 1
 fi
 
-TARBALL="${DIST_NAME}-devel-armhf-raspberry-rootfs-${RELEASE}.tar.bz2"
-IMAGE="${DIST_NAME}-devel-armhf-raspberry-${RELEASE}.img"
+TARBALL="${DIST_NAME}-devel-arm64-raspberry-rootfs-${RELEASE}.tar.bz2"
+IMAGE="${DIST_NAME}-devel-arm64-raspberry-${RELEASE}.img"
 
 function make_raspi2_image() {
     # Build the image file
@@ -46,10 +46,10 @@ function make_raspi2_image() {
         exit 1
     fi
 
-    # SIZE_LIMIT -> (850M + 64M) ~ 920 MB | SIZE -> 920 * 1024 * 1024 / 512 = 1884160 |  SEEK = SIZE_LIMIT * 1.2 = 1100
-    SIZE_LIMIT=920
-    SIZE=1884160
-    SEEK=1100
+    # SIZE_LIMIT -> (850M + 64M) ~ 1200 MB | SIZE -> 1500 * 1024 * 1024 / 512 = 2457600 |  SEEK = SIZE_LIMIT * 1.2 = 1440
+    SIZE_LIMIT=1200
+    SIZE=2457600
+    SEEK=1440
 
     # If a compress version exists, remove it.
     rm -f "${BASEDIR}/${IMAGE}.bz2" || true
@@ -80,7 +80,7 @@ EOM
     mount "${ROOT_LOOP}" "${MOUNTDIR}"
     mkdir -p "${MOUNTDIR}/boot"
     mount "${BOOT_LOOP}" "${MOUNTDIR}/boot"
-    rsync -a --progress "$R/" "${MOUNTDIR}/"
+    ( rsync -a --progress "$R/" "${MOUNTDIR}/" || true )
     umount -l "${MOUNTDIR}/boot"
     umount -l "${MOUNTDIR}"
     losetup -d "${ROOT_LOOP}"
