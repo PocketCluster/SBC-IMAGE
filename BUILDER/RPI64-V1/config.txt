@@ -1,1 +1,8 @@
 kernel=kernel8.img
+
+# have a properly sized image
+disable_overscan=1
+
+# gpu_mem is for closed-source driver only; since we are only using the
+# open-source driver here, set low
+gpu_mem=16

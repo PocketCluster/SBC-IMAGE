@@ -342,12 +342,14 @@ function setup_rpi64_specifics() {
     
     # Bootloader installation
     tar -xvzf ${PWD}/bootstrap.tar.gz -C ${R}
+    mv ${R}/boot/bcm2710-rpi-3-b.dtb ${R}/boot/bcm2710-rpi-3-b.dtb_32
+    (mv ${R}/boot/bcm2837-rpi-3-b.dtb ${R}/boot/bcm2837-rpi-3-b.dtb_32 || true)
     tar -xvzf ${PWD}/kernel64.tar.gz -C ${R}    
 
     # Very minimal boot config
     #wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
     cp ${PWD}/config.txt $R/boot/config.txt
-    echo "net.ifnames=0 kernel=kernel8.img biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash" > $R/boot/cmdline.txt
+    echo "net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash" > $R/boot/cmdline.txt
 
     # Blacklist platform modules not applicable to the RPi2
     cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
