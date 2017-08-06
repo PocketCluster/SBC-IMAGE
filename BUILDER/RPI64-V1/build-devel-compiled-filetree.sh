@@ -274,62 +274,6 @@ function create_user() {
     echo "pocket ALL=(ALL) NOPASSWD:ALL" > $R/etc/sudoers.d/pocket
 }
 
-function setup_raspberry_specifics() {
-    local FS="${1}"
-    if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
-        echo "ERROR! Unsupport filesystem requested. Exitting."
-        exit 1
-    fi
-
-    # Hardware - Create a fake HW clock and add rng-tools These are coming from official repo
-    chroot $R apt-get -y install fake-hwclock rng-tools
-    
-    # Bootloader installation
-    cp ${PWD}/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb $R/tmp
-    chroot $R dpkg -i /tmp/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb
-    rm -rf $R/tmp/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb || true
-    # Remove all old modules
-    rm -rf "${R}/lib/modules/*" || true
-    
-    # Firmware, Modules, Kernel 4.4.22-v7+
-    chroot $R apt install -y --no-install-recommends --no-install-suggests curl binutils
-    wget -c https://raw.githubusercontent.com/Hexxeh/rpi-update/master/rpi-update -O $R/usr/bin/rpi-update
-    chmod 755 $R/usr/bin/rpi-update
-    chroot $R rpi-update d26c39bd353eb0ebbc7db3546277083eac4aa3bd
-    rm $R/usr/bin/rpi-update
-    # clear of tools
-    chroot $R apt remove -y --purge curl binutils
-
-    # Very minimal boot config
-    #wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
-    cp ${PWD}/config.txt $R/boot/config.txt
-    echo "net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash" > $R/boot/cmdline.txt
-
-    # Blacklist platform modules not applicable to the RPi2
-    cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
-blacklist snd_soc_pcm512x_i2c
-blacklist snd_soc_pcm512x
-blacklist snd_soc_tas5713
-blacklist snd_soc_wm8804
-blacklist brcmfmac
-blacklist brcmutil
-EOM
-
-    # Set up fstab
-    cat <<EOM >$R/etc/fstab
-proc            /proc           proc    defaults          0       0
-/dev/mmcblk0p2  /               ${FS}   defaults,noatime  0       1
-/dev/mmcblk0p1  /boot/          vfat    defaults          0       2
-EOM
-
-    # udev rules
-    printf 'SUBSYSTEM=="vchiq", GROUP="video", MODE="0660"\n' > $R/etc/udev/rules.d/10-local-rpi.rules
-    printf 'SUBSYSTEM=="input", GROUP="input", MODE="0660"\n' >> $R/etc/udev/rules.d/99-com.rules
-
-    # Save the clock
-    chroot $R fake-hwclock save
-}
-
 function setup_rpi64_specifics() {
     local FS="${1}"
     if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
@@ -344,7 +288,11 @@ function setup_rpi64_specifics() {
     tar -xvzf ${PWD}/bootstrap.tar.gz -C ${R}
     mv ${R}/boot/bcm2710-rpi-3-b.dtb ${R}/boot/bcm2710-rpi-3-b.dtb_32
     (mv ${R}/boot/bcm2837-rpi-3-b.dtb ${R}/boot/bcm2837-rpi-3-b.dtb_32 || true)
-    tar -xvzf ${PWD}/kernel64.tar.gz -C ${R}    
+    tar -xvzf ${PWD}/kernel64.tar.gz -C ${R}
+
+    #fix ownership
+    (chroot $R chown -R root:root ${R}/boot || true)
+    (chroot $R chown -R root:root ${R}/lib || true)
 
     # Very minimal boot config
     #wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
