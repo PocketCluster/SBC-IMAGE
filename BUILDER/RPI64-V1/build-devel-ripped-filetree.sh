@@ -138,18 +138,6 @@ function ubuntu_development() {
     chroot $R apt-get -y install python-minimal python3-minimal
     chroot $R apt-get -y install python-dev python3-dev
     chroot $R apt-get -y install python-pip python3-pip
-
-    # Install golang
-    tar -xvzf ${PWD}/go-1.7.5.linux-arm64.tar.gz -C ${R}/opt
-    chroot $R ln -s /opt/go-1.7.5 /opt/go
-    mkdir -p ${R}/opt/gopkg/{src,pkg,bin}
-    cat <<EOM >>${R}/etc/bash.bashrc
-if [ -d /opt/go ]; then
-    export GOPATH=/opt/gopkg
-    export GOROOT=/opt/go
-    export PATH=\$GOROOT/bin:\$GOPATH/bin:\$PATH
-fi
-EOM
 }
 
 function configure_ssh() {
@@ -222,29 +210,6 @@ EOM
     find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
 }
 
-function docker_setup() {
-    # docker dependencies
-    chroot $R apt-get -y install apparmor adduser iptables init-system-helpers lsb-base libapparmor1 libc6 libdevmapper1.02.1 
-    # docker recommends
-    chroot $R apt-get -y install cgroupfs-mount cgroup-lite git xz-utils
-    # docker suggestion
-    chroot $R apt-get -y install btrfs-tools
-    # docker possible utility
-    chroot $R apt-get -y install apparmor-profiles apparmor-utils bridge-utils
-
-    # aufs is blocked for now as not in mainstream yet 4.9 maybe?
-    # chroot $R apt-get -y install aufs-tools
-
-    # install docker
-    mkdir -p $R/tmp/
-    cp ${PWD}/docker.io_1.10.3-0ubuntu6_arm64.deb $R/tmp
-    chroot $R dpkg -i /tmp/docker.io_1.10.3-0ubuntu6_arm64.deb
-    rm -rf $R/tmp/docker.io_1.10.3-0ubuntu6_arm64.deb || true
-
-    echo "kernel.keys.root_maxkeys = 1000000" >> $R/etc/sysctl.conf
-    chroot $R apt-mark hold u-boot-tools docker.io
-}
-
 function create_groups() {
     chroot $R groupadd -f --system input
     cat <<'EOM' >$R/usr/local/sbin/adduser.local
@@ -269,65 +234,9 @@ function create_user() {
 
     chroot $R addgroup --gid 29999 ${DIST_USERGROUP}
     chroot $R adduser --gecos "PocketCluster (admin user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
-    chroot $R usermod -a -G sudo,docker -p ${PASSWD} ${DIST_USERNAME}
+    chroot $R usermod -a -G sudo -p ${PASSWD} ${DIST_USERNAME}
 
     echo "pocket ALL=(ALL) NOPASSWD:ALL" > $R/etc/sudoers.d/pocket
-}
-
-function setup_raspberry_specifics() {
-    local FS="${1}"
-    if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
-        echo "ERROR! Unsupport filesystem requested. Exitting."
-        exit 1
-    fi
-
-    # Hardware - Create a fake HW clock and add rng-tools These are coming from official repo
-    chroot $R apt-get -y install fake-hwclock rng-tools
-    
-    # Bootloader installation
-    cp ${PWD}/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb $R/tmp
-    chroot $R dpkg -i /tmp/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb
-    rm -rf $R/tmp/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb || true
-    # Remove all old modules
-    rm -rf "${R}/lib/modules/*" || true
-    
-    # Firmware, Modules, Kernel 4.4.22-v7+
-    chroot $R apt install -y --no-install-recommends --no-install-suggests curl binutils
-    wget -c https://raw.githubusercontent.com/Hexxeh/rpi-update/master/rpi-update -O $R/usr/bin/rpi-update
-    chmod 755 $R/usr/bin/rpi-update
-    chroot $R rpi-update d26c39bd353eb0ebbc7db3546277083eac4aa3bd
-    rm $R/usr/bin/rpi-update
-    # clear of tools
-    chroot $R apt remove -y --purge curl binutils
-
-    # Very minimal boot config
-    #wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
-    cp ${PWD}/config.txt $R/boot/config.txt
-    echo "net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash" > $R/boot/cmdline.txt
-
-    # Blacklist platform modules not applicable to the RPi2
-    cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
-blacklist snd_soc_pcm512x_i2c
-blacklist snd_soc_pcm512x
-blacklist snd_soc_tas5713
-blacklist snd_soc_wm8804
-blacklist brcmfmac
-blacklist brcmutil
-EOM
-
-    # Set up fstab
-    cat <<EOM >$R/etc/fstab
-proc            /proc           proc    defaults          0       0
-/dev/mmcblk0p2  /               ${FS}   defaults,noatime  0       1
-/dev/mmcblk0p1  /boot/          vfat    defaults          0       2
-EOM
-
-    # udev rules
-    printf 'SUBSYSTEM=="vchiq", GROUP="video", MODE="0660"\n' > $R/etc/udev/rules.d/10-local-rpi.rules
-    printf 'SUBSYSTEM=="input", GROUP="input", MODE="0660"\n' >> $R/etc/udev/rules.d/99-com.rules
-
-    # Save the clock
-    chroot $R fake-hwclock save
 }
 
 function setup_rpi64_specifics() {
@@ -336,28 +245,11 @@ function setup_rpi64_specifics() {
         echo "ERROR! Unsupport filesystem requested. Exitting."
         exit 1
     fi
-
-    # Hardware - Create a fake HW clock and add rng-tools These are coming from official repo
-    chroot $R apt-get -y install fake-hwclock rng-tools
     
-    # Bootloader installation
-    tar -xvzf ${PWD}/bootstrap.tar.gz -C ${R}
-    tar -xvzf ${PWD}/kernel64.tar.gz -C ${R}    
-
-    # Very minimal boot config
-    #wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
-    cp ${PWD}/config.txt $R/boot/config.txt
-    echo "net.ifnames=0 kernel=kernel8.img biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash" > $R/boot/cmdline.txt
-
-    # Blacklist platform modules not applicable to the RPi2
-    cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
-blacklist snd_soc_pcm512x_i2c
-blacklist snd_soc_pcm512x
-blacklist snd_soc_tas5713
-blacklist snd_soc_wm8804
-blacklist brcmfmac
-blacklist brcmutil
-EOM
+    # Bootloader, firmware, modules installation
+    tar -xzf ${PWD}/../CAPTURED-BOOT/RPI64/BOOTDIR-RPI64-OSUSE-Leap42.2-20170806.tar.gz  -C ${R}
+    tar -xzf ${PWD}/../CAPTURED-BOOT/RPI64/FIRMWARE-RPI64-OSUSE-Leap42.2-20170806.tar.gz -C ${R}
+    tar -xzf ${PWD}/../CAPTURED-BOOT/RPI64/MODULES-RPI64-OSUSE-Leap42.2-20170806.tar.gz -C ${R}
 
     # Set up fstab
     cat <<EOM >$R/etc/fstab
@@ -366,11 +258,8 @@ proc            /proc           proc    defaults          0       0
 /dev/mmcblk0p1  /boot/          vfat    defaults          0       2
 EOM
 
-    # udev rules
-    printf 'SUBSYSTEM=="vchiq", GROUP="video", MODE="0660"\n' > $R/etc/udev/rules.d/10-local-rpi.rules
-    printf 'SUBSYSTEM=="input", GROUP="input", MODE="0660"\n' >> $R/etc/udev/rules.d/99-com.rules
-
-    # Save the clock
+    # Hardware - Create a fake HW clock and add rng-tools These are coming from official repo
+    chroot $R apt-get -y install fake-hwclock rng-tools
     chroot $R fake-hwclock save
 }
 
@@ -453,7 +342,9 @@ function single_stage_build() {
     ubuntu_development
     configure_ssh
     generate_locale
-    docker_setup
+
+    # prevent u-boot to be updated
+    chroot $R apt-mark hold u-boot-tools
 
     create_groups
     create_user
