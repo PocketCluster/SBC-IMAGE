@@ -62,6 +62,8 @@ export ROOTFS_LOOP="$(losetup --offset $((413696 * 512)) --sizelimit $((2803585 
 export ROOTFS_MOUNT="/tmp/rootfs"
 mount "${ROOTFS_LOOP}" "${ROOTFS_MOUNT}"
 
+...
+
 umount -l "${ROOTFS_MOUNT}"
 losetup -d "${ROOTFS_LOOP}"
 ```

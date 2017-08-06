@@ -46,10 +46,10 @@ function make_raspi2_image() {
         exit 1
     fi
 
-    # SIZE_LIMIT -> (1100 + 200M) ~ 1400 MB | SIZE -> 1500 * 1024 * 1024 / 512 = 2867200 |  SEEK = SIZE_LIMIT * 1.2 = 1680
+    # SIZE_LIMIT -> (1100 + 200M) ~ 1400 MB | SIZE -> 1500 * 1024 * 1024 / 512 = 2867200 |  SEEK = SIZE_LIMIT * 1.0 = 1400
     SIZE_LIMIT=1400
     SIZE=2867200
-    SEEK=1680
+    SEEK=1400
 
     # If a compress version exists, remove it.
     rm -f "${BASEDIR}/${IMAGE}.bz2" || true
