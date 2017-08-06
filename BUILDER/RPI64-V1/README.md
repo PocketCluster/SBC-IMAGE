@@ -47,8 +47,8 @@ openSUSE-Leap42.2-ARM-JeOS-raspberrypi3.aarch64.raw2      413696 3217280 2803585
 
 ### File Preview
 ```
-# Bootsection
-export BOOT_LOOP="$(losetup --offset $((2048 * 512)) --sizelimit $((411651 * 512)) -f --show ${PWD}/openSUSE-Leap42.2-ARM-JeOS-raspberrypi3.aarch64.raw)"
+# Bootsection (be careful with sizelimit. It takes 'size', not end sector)
+export BOOT_LOOP="$(losetup --offset $((2048 * 512)) --sizelimit $((409604 * 512)) -f --show ${PWD}/openSUSE-Leap42.2-ARM-JeOS-raspberrypi3.aarch64.raw)"
 export BOOT_MOUNT="/tmp/boot"
 mount "${BOOT_LOOP}" "${BOOT_MOUNT}"
 
@@ -57,8 +57,8 @@ mount "${BOOT_LOOP}" "${BOOT_MOUNT}"
 umount -l "${BOOT_MOUNT}"
 losetup -d "${BOOT_LOOP}"
 
-# Rootfs
-export ROOTFS_LOOP="$(losetup --offset $((413696 * 512)) --sizelimit $((3217280 * 512)) -f --show ${PWD}/openSUSE-Leap42.2-ARM-JeOS-raspberrypi3.aarch64.raw)"
+# Rootfs (be careful with sizelimit. It takes 'size', not end sector)
+export ROOTFS_LOOP="$(losetup --offset $((413696 * 512)) --sizelimit $((2803585 * 512)) -f --show ${PWD}/openSUSE-Leap42.2-ARM-JeOS-raspberrypi3.aarch64.raw)"
 export ROOTFS_MOUNT="/tmp/rootfs"
 mount "${ROOTFS_LOOP}" "${ROOTFS_MOUNT}"
 

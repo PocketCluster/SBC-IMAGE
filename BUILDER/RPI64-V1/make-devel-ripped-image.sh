@@ -46,10 +46,10 @@ function make_raspi2_image() {
         exit 1
     fi
 
-    # SIZE_LIMIT -> (850M + 64M) ~ 1200 MB | SIZE -> 1500 * 1024 * 1024 / 512 = 2457600 |  SEEK = SIZE_LIMIT * 1.2 = 1440
-    SIZE_LIMIT=1200
-    SIZE=2457600
-    SEEK=1440
+    # SIZE_LIMIT -> (1100 + 200M) ~ 1400 MB | SIZE -> 1500 * 1024 * 1024 / 512 = 2867200 |  SEEK = SIZE_LIMIT * 1.2 = 1680
+    SIZE_LIMIT=1400
+    SIZE=2867200
+    SEEK=1680
 
     # If a compress version exists, remove it.
     rm -f "${BASEDIR}/${IMAGE}.bz2" || true
@@ -62,16 +62,21 @@ function make_raspi2_image() {
     dd if=${PWD}/../CAPTURED-BOOT/RPI64/BOOTLOADER-RPI64-OSUSE-Leap42.2-20170806.img of=${TOP_LOOP} bs=512 count=411652
     losetup -d "${TOP_LOOP}"
 
+    # !!! this is the actual size of rootfs partition (we need to count the last sector as well with + 1) !!!
+    ROOT_SIZE=$((${SIZE} - 413696 + 1))
+    echo "ROOT_FS_SIZE is ${ROOT_SIZE}"
+
     sfdisk -f "$BASEDIR/${IMAGE}" <<EOM
 unit: sectors
 
-1 : start=     2048, size=   411651, Id= c, bootable
-2 : start=   413696, size=  ${SIZE}, Id=83
+1 : start=     2048, size=   409604, Id= c, bootable
+2 : start=   413696, size=  ${ROOT_SIZE}, Id=83
 3 : start=        0, size=        0, Id= 0
 4 : start=        0, size=        0, Id= 0
 EOM
 
-    ROOT_LOOP="$(losetup -o 65M --sizelimit ${SIZE_LIMIT}M -f --show ${BASEDIR}/${IMAGE})"    
+    ### CHECK EXACT START SECTOR & SECTOR SIZE
+    ROOT_LOOP="$(losetup --offset $((413696 * 512)) --sizelimit $((${ROOT_SIZE} * 512)) -f --show ${BASEDIR}/${IMAGE})"    
     # https://blogofterje.wordpress.com/2012/01/14/optimizing-fs-on-sd-card/
     mkfs.ext4 -F -O ^has_journal -E stride=2,stripe-width=1024 -b 4096 -L PC_ROOT -U ${FS_ROOT_UUID} -m 5 "${ROOT_LOOP}"
     MOUNTDIR="${BUILDDIR}/mount"
