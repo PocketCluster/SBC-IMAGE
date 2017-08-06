@@ -47,7 +47,7 @@ function make_raspi2_image() {
     fi
 
     # SIZE_LIMIT -> (128M + 900M) ~ 1100 MB | SIZE -> 1100 * 1024 * 1024 / 512 = 2252800 |  SEEK = SIZE_LIMIT * 1.0 = 1100 
-    SIZE_LIMIT=1200
+    SIZE_LIMIT=1300
 
     # for 64bit os, we need 128MB boot partition
     BOOTSZ_IN_SECTOR=$(( 128 * 1024 * 1024 / 512 ))
