@@ -45,7 +45,7 @@
 23. [ ] Check and make suder `docker.io.deb` package is static build. Otherwise, we're in trouble.
   - We can now build `docker.io` within docker. We can only create daemon binary!
 24. [x] Remove mate repository from `RPI-V2` build to make sure it is not contaminated with non-official repo.
-25. [ ] RPI 64 FIQ failure 
+25. [ ] RPI 64 FIQ failure (bcm2836-arm-local ??)
 
   - <https://github.com/oerdnj/lede/blob/master/target/linux/brcm2708/patches-4.9/0008-irqchip-irq-bcm2835-Add-2836-FIQ-support.patch>
   - <https://github.com/raspberrypi/linux/blob/rpi-4.9.y/drivers/irqchip/irq-bcm2835.c#L259-L266>
@@ -73,3 +73,54 @@
   - modules.softdep  
   - modules.symbols  
   - modules.symbols.bin
+27. [ ] docker kernel options
+
+  ```
+  Optional Features:
+  - CONFIG_USER_NS: enabled
+  - CONFIG_SECCOMP: enabled
+  - CONFIG_CGROUP_PIDS: missing
+  - CONFIG_MEMCG_SWAP: missing
+  - CONFIG_MEMCG_SWAP_ENABLED: missing
+  - CONFIG_BLK_CGROUP: enabled
+  - CONFIG_BLK_DEV_THROTTLING: enabled
+  - CONFIG_IOSCHED_CFQ: enabled
+  - CONFIG_CFQ_GROUP_IOSCHED: enabled
+  - CONFIG_CGROUP_PERF: missing
+  - CONFIG_CGROUP_HUGETLB: missing
+  - CONFIG_NET_CLS_CGROUP: enabled (as module)
+  - CONFIG_CGROUP_NET_PRIO: missing
+  - CONFIG_CFS_BANDWIDTH: missing
+  - CONFIG_FAIR_GROUP_SCHED: enabled
+  - CONFIG_RT_GROUP_SCHED: missing
+  - CONFIG_IP_VS: enabled (as module)
+  - CONFIG_IP_VS_NFCT: enabled
+  - CONFIG_IP_VS_RR: enabled (as module)
+  - CONFIG_EXT4_FS: enabled
+  - CONFIG_EXT4_FS_POSIX_ACL: enabled
+  - CONFIG_EXT4_FS_SECURITY: enabled
+  - Network Drivers:
+    - "overlay":
+      - CONFIG_VXLAN: enabled
+        Optional (for encrypted networks):
+        - CONFIG_CRYPTO: enabled
+        - CONFIG_CRYPTO_AEAD: enabled (as module)
+        - CONFIG_CRYPTO_GCM: enabled (as module)
+        - CONFIG_CRYPTO_SEQIV: enabled (as module)
+        - CONFIG_CRYPTO_GHASH: enabled (as module)
+        - CONFIG_XFRM: enabled
+        - CONFIG_XFRM_USER: enabled
+        - CONFIG_XFRM_ALGO: enabled
+        - CONFIG_INET_ESP: enabled (as module)
+        - CONFIG_INET_XFRM_MODE_TRANSPORT: enabled (as module)
+    - "ipvlan":
+      - CONFIG_IPVLAN: missing
+    - "macvlan":
+      - CONFIG_MACVLAN: enabled (as module)
+      - CONFIG_DUMMY: enabled (as module)
+    - "ftp,tftp client in container":
+      - CONFIG_NF_NAT_FTP: enabled (as module)
+      - CONFIG_NF_CONNTRACK_FTP: enabled (as module)
+      - CONFIG_NF_NAT_TFTP: enabled (as module)
+      - CONFIG_NF_CONNTRACK_TFTP: enabled (as module)
+  ```
