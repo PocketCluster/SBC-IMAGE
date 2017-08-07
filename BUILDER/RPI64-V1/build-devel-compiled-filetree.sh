@@ -285,9 +285,9 @@ function setup_rpi64_specifics() {
     chroot $R apt-get -y install fake-hwclock rng-tools
     
     # Bootloader installation
-    tar -xvzf ${PWD}/bootstrap-4.9.40.tar.gz -C ${R}
+    tar -xvzf ${PWD}/bootstrap-4.9.40.tar.gz --overwrite -C ${R}
     mv ${R}/boot/bcm2710-rpi-3-b.dtb ${R}/boot/bcm2710-rpi-3-b.dtb_32
-    tar -xvzf ${PWD}/kernel64-4.9.40.tar.gz -C ${R}
+    tar -xvzf ${PWD}/kernel64-4.9.40.tar.gz --overwrite -C ${R}
 
     #fix ownership
     (chroot $R chown -R root:root ${R}/boot || true)
