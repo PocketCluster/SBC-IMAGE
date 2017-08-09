@@ -60,3 +60,5 @@
     }
   }
   ```
+26. [ ] cpuset cgorup is unavilable
+27. [ ] systemlog (/var/log/syslog system:adm)
