@@ -296,7 +296,7 @@ function setup_rpi64_specifics() {
     # Very minimal boot config
     #wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
     cp ${PWD}/config.txt $R/boot/config.txt
-    echo "net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash" > $R/boot/cmdline.txt
+    echo "net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 dwc_otg.fiq_fix_enable=1 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} cgroup_enable=cpuset cgroup_enable=memory swapaccount=1 elevator=deadline fsck.repair=yes rootwait quiet splash" > $R/boot/cmdline.txt
 
     # Blacklist platform modules not applicable to the RPi2
     cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
