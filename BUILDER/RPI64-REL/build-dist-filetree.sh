@@ -139,7 +139,7 @@ function ubuntu_essential() {
     chroot $R dpkg-reconfigure --frontend=noninteractive debconf
 
     # console & keyboard
-    chroot $R apt-get -y install --no-install-suggests console-common console-data console-setup keyboard-configuration
+    chroot $R DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-suggests console-common console-data console-setup keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive console-setup
 
@@ -218,7 +218,7 @@ function docker_setup() {
     rm -rf $R/tmp/docker.io_1.12.6-0ubuntu1_arm64.deb || true
 
     echo "kernel.keys.root_maxkeys = 1000000" >> $R/etc/sysctl.conf
-    chroot $R apt-mark hold u-boot-tools docker.io
+    chroot $R apt-mark hold u-boot-tools runc containerd docker.io
 }
 
 function create_groups() {
