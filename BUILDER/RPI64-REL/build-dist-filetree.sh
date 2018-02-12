@@ -248,7 +248,7 @@ function create_user() {
     chroot $R usermod -a -G sudo,docker -p ${PASSWD} ${DIST_USERNAME}
 }
 
-function setup_raspberry_specifics() {
+function setup_rpi64_specifics() {
     local FS="${1}"
     if [ "${FS}" != "ext4" ] && [ "${FS}" != 'f2fs' ]; then
         echo "ERROR! Unsupport filesystem requested. Exitting."
@@ -259,25 +259,18 @@ function setup_raspberry_specifics() {
     chroot $R apt-get -y install fake-hwclock rng-tools
     
     # Bootloader installation
-    cp ${PWD}/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb $R/tmp
-    chroot $R dpkg -i /tmp/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb
-    rm -rf $R/tmp/raspberrypi-bootloader_1.20160315-1~xenial1.0_armhf.deb || true
-    # Remove all old modules
-    rm -rf "${R}/lib/modules/*" || true
-    
-    # Firmware, Modules, Kernel 4.4.22-v7+
-    chroot $R apt install -y --no-install-recommends --no-install-suggests curl binutils
-    wget -c https://raw.githubusercontent.com/Hexxeh/rpi-update/master/rpi-update -O $R/usr/bin/rpi-update
-    chmod 755 $R/usr/bin/rpi-update
-    chroot $R rpi-update d26c39bd353eb0ebbc7db3546277083eac4aa3bd
-    rm $R/usr/bin/rpi-update
-    # clear of tools
-    chroot $R apt remove -y --purge curl binutils
+    tar -xvzf ${PWD}/bootstrap-4.9.40.tar.gz --overwrite -C ${R}
+    mv ${R}/boot/bcm2710-rpi-3-b.dtb ${R}/boot/bcm2710-rpi-3-b.dtb_32
+    tar -xvzf ${PWD}/kernel64-4.9.40.tar.gz --overwrite -C ${R}
+
+    #fix ownership
+    (chroot $R chown -R root:root ${R}/boot || true)
+    (chroot $R chown -R root:root ${R}/lib || true)
 
     # Very minimal boot config
     #wget -c https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt -O $R/boot/config.txt
     cp ${PWD}/config.txt $R/boot/config.txt
-    echo "net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} elevator=deadline rootwait quiet splash" > $R/boot/cmdline.txt
+    echo "net.ifnames=0 biosdevname=0 dwc_otg.lpm_enable=0 dwc_otg.fiq_fix_enable=1 console=tty1 root=/dev/mmcblk0p2 rootfstype=${FS} cgroup_enable=cpuset cgroup_enable=memory swapaccount=1 elevator=deadline fsck.repair=yes rootwait quiet splash" > $R/boot/cmdline.txt
 
     # Blacklist platform modules not applicable to the RPi2
     cat <<EOM >$R/etc/modprobe.d/blacklist-rpi.conf
@@ -408,7 +401,7 @@ function single_stage_build() {
     create_groups
     create_user
 
-    setup_raspberry_specifics ${FS_TYPE}
+    setup_rpi64_specifics ${FS_TYPE}
     apt_clean
     clean_up
     umount_system
