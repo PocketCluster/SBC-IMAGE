@@ -202,6 +202,17 @@ function docker_setup() {
     rm -rf $R/tmp/aufs-tools_4.9+20170918-1_arm64.deb || true
 
     # install docker
+    # https://launchpad.net/ubuntu/+source/runc/1.0.0~rc2+docker1.12.6-0ubuntu1~16.04.1
+    cp ${PWD}/runc_1.0.0_rc2+docker1.12.6-0ubuntu1_16.04.1_arm64.deb $R/tmp
+    chroot $R dpkg -i /tmp/runc_1.0.0_rc2+docker1.12.6-0ubuntu1_16.04.1_arm64.deb
+    rm -rf $R/tmp/runc_1.0.0_rc2+docker1.12.6-0ubuntu1_16.04.1_arm64.deb || true
+
+    # https://launchpad.net/ubuntu/+source/containerd/0.2.5-0ubuntu1~16.04.1
+    cp ${PWD}/containerd_0.2.5-0ubuntu1_16.04.1_arm64.deb $R/tmp
+    chroot $R dpkg -i /tmp/containerd_0.2.5-0ubuntu1_16.04.1_arm64.deb
+    rm -rf $R/tmp/containerd_0.2.5-0ubuntu1_16.04.1_arm64.deb || true
+
+    # https://launchpad.net/ubuntu/+source/docker.io/1.12.6-0ubuntu1~16.04.1
     cp ${PWD}/docker.io_1.12.6-0ubuntu1_arm64.deb $R/tmp
     chroot $R dpkg -i /tmp/docker.io_1.12.6-0ubuntu1_arm64.deb
     rm -rf $R/tmp/docker.io_1.12.6-0ubuntu1_arm64.deb || true
