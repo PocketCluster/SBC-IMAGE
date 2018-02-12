@@ -139,7 +139,7 @@ function ubuntu_essential() {
     chroot $R dpkg-reconfigure --frontend=noninteractive debconf
 
     # console & keyboard
-    chroot $R DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-suggests console-common console-data console-setup keyboard-configuration
+    chroot $R apt-get -y install --no-install-suggests console-common console-data console-setup keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive console-setup
 
