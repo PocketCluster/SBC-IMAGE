@@ -133,7 +133,7 @@ EOM
 # Install Ubuntu Essentials
 function ubuntu_essential() {
     # only the essentials
-    chroot $R apt-get -y install --no-install-suggests language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata dialog resolvconf
+    chroot $R apt-get -y install --no-install-suggests language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata dialog resolvconf parted
     # Config timezone, Keyboard, Console
     chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
     chroot $R dpkg-reconfigure --frontend=noninteractive debconf
@@ -189,7 +189,7 @@ EOM
 
 function docker_setup() {
     # docker dependencies
-    chroot $R apt-get -y install --no-install-suggests adduser init-system-helpers libc6 iptables net-tools apparmor libapparmor1 libcap2 libltdl7 libsqlite3-0 libsystemd0 lvm2 liblvm2cmd2.02 libseccomp2 
+    chroot $R apt-get -y install --no-install-suggests adduser init-system-helpers libc6 apparmor libapparmor1 libcap2 libltdl7 libsqlite3-0 libsystemd0 lvm2 liblvm2cmd2.02 libseccomp2 
     # docker recommends
     chroot $R apt-get -y install --no-install-suggests cgroupfs-mount cgroup-lite git xz-utils
     # docker possible utility
@@ -297,6 +297,33 @@ EOM
     chroot $R fake-hwclock save
 }
 
+function setup_config_ops() {
+    # place autopartitioner
+    cp autopartition.sh $R/etc/rc.d
+    chmod 755 $R/etc/rc.d/autopartition.sh
+    chroot $R chown root:root /etc/rc.d/autopartition.sh
+
+    # place dhcp client configuration
+    cp dhclient.conf $R/etc/dhcp/
+    # setup dhcpagent script
+    cp dhcpagent $R/etc/dhcp/dhclient-exit-hooks.d/
+    # setup ownership
+    chroot $R chown -R root:root /etc/dhcp/
+
+    # setup pocketd
+    mkdir -p $R/opt/pocket/bin
+    cp pocketd $R/opt/pocket/bin
+    chmod 755 $R/opt/pocket/bin/pocketd
+    chroot $R chown -R root:root /opt/pocket
+
+    # setup pocket service
+    cp pocket.service $R/etc/systemd/system/ 
+    chroot $R chown root:root /etc/systemd/system/pocket.service
+    chroot $R systemctl daemon-reload
+    chroot $R systemctl enable pocket
+    chroot $R systemctl status pocket.service
+}
+
 function apt_clean() {
     chroot $R apt-get autoremove -y --purge
     chroot $R apt-get clean -y
@@ -402,6 +429,7 @@ function single_stage_build() {
     create_user
 
     setup_rpi64_specifics ${FS_TYPE}
+    setup_config_ops
     apt_clean
     clean_up
     umount_system
