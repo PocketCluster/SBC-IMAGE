@@ -299,9 +299,14 @@ EOM
 
 function setup_config_ops() {
     # place autopartitioner
-    cp autopartition.sh $R/etc/rc.d
-    chmod 755 $R/etc/rc.d/autopartition.sh
-    chroot $R chown root:root /etc/rc.d/autopartition.sh
+    cp autopartition.sh $R/etc/
+    chmod 755 $R/etc/autopartition.sh
+    chroot $R chown root:root /etc/autopartition.sh
+
+    # modify rc.local
+    cp rc.local $R/etc/
+    chmod 755 $R/etc/rc.local
+    chroot $R chown root:root /etc/rc.local
 
     # place dhcp client configuration
     cp dhclient.conf $R/etc/dhcp/

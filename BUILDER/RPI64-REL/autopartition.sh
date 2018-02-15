@@ -16,6 +16,9 @@ mkswap /dev/mmcblk0p3
 # turn swap space
 swapon /dev/mmcblk0p3
 # add swap to fstable
-echo "/dev/mmcblk0p3 none swap sw 0 0" >> /etc/fstab
-# remove autopartition
-rm -rf /etc/rc.d/autopartition.sh
+cat <<EOM >/etc/fstab
+proc            /proc           proc    defaults          0       0
+/dev/mmcblk0p2  /               ext4    defaults,noatime  0       1
+/dev/mmcblk0p1  /boot           vfat    defaults          0       2
+/dev/mmcblk0p3  none            swap    sw                0       0
+EOM
