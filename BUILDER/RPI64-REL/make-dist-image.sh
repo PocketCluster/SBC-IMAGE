@@ -49,8 +49,14 @@ function make_rpi64_image() {
     # BOOT PARTITION SIZE IN MB
     SIZE_BOOTSEC=128
 
+    # FILETREE ROOTSIZE
+    FTRT_SZ=$(du -s -BM ${R} | cut -f1 -d$'\t' | sed -e 's/M//')
+
+    # EXTRA EMPTY DISK IMG SIZE
+    EX_SZ=10
+
     # SIZE_LIMIT -> rootfs size + boot partition
-    SIZE_LIMIT=$((500 + ${SIZE_BOOTSEC}))
+    SIZE_LIMIT=$((${SIZE_BOOTSEC} + ${FTRT_SZ} + ${EX_SZ}))
 
     # for 64bit os, we need 128MB boot partition
     BOOTSZ_IN_SECTOR=$(( ${SIZE_BOOTSEC} * 1024 * 1024 / 512 ))
