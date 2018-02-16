@@ -133,18 +133,21 @@ EOM
 # Install Ubuntu Essentials
 function ubuntu_essential() {
     # only the essentials
-    chroot $R apt-get -y install --no-install-suggests language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping iptables net-tools ntpdate ntp tzdata dialog resolvconf parted
+    chroot $R apt-get -y install --no-install-suggests language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping iptables net-tools ntpdate ntp iptables-persistent tzdata dialog resolvconf parted
     # Config timezone, Keyboard, Console
     chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
     chroot $R dpkg-reconfigure --frontend=noninteractive debconf
 
+    # system hang prevention
+    chroot $R apt-get -y install --no-install-suggests libpam-systemd dbus
+
+    return
+
+    # (2018/02/16) these are unnecessary for headless machine
     # console & keyboard
     chroot $R apt-get -y install --no-install-suggests console-common console-data console-setup keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive console-setup
-
-    # system hang prevention
-    chroot $R apt-get -y install --no-install-suggests libpam-systemd dbus
 }
 
 function generate_locale() {
@@ -418,8 +421,58 @@ net.ipv6.conf.all.disable_ipv6 = 1
 net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
 EOM
+    return
 
+    # (2018/02/16) iptables-rules prevents hadoop from starting. we'll leave it for now
     # setup iptables
+    cat <<EOM >$R/etc/iptables/rules.v4
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT DROP [0:0]
+
+-I INPUT  1 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-I OUTPUT 1 -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# loopback
+-A INPUT  -i lo -j ACCEPT
+-A OUTPUT -o lo -j ACCEPT
+
+# dns
+-A OUTPUT -o eth0 -p udp -m udp --dport 53 -j ACCEPT
+
+# dhcp
+-A INPUT  -i eth0 -p udp -m udp --dport 68 -m state --state NEW -j ACCEPT
+-A OUTPUT -o eth0 -p udp -m udp --dport 67 -m state --state NEW -j ACCEPT
+
+# ntp
+-A OUTPUT -p udp --dport 123 --sport 123 -j ACCEPT
+
+# docker
+-A INPUT  -i eth0 -p tcp -m tcp --dport 2376 -m state --state NEW -j ACCEPT
+-A OUTPUT -o eth0 -p tcp -m tcp --dport 2379 -m state --state NEW -j ACCEPT
+-A INPUT  -i eth0 -p udp -m udp --dport 4789 -m state --state NEW -j ACCEPT
+-A INPUT  -i eth0 -p udp -m udp --dport 7946 -m state --state NEW -j ACCEPT
+-A INPUT  -i eth0 -p tcp -m tcp --dport 7946 -m state --state NEW -j ACCEPT
+
+# PocketCluster session
+-A INPUT  -i eth0 -p tcp -m tcp --dport 3022 -m state --state NEW -j ACCEPT
+-A OUTPUT -o eth0 -p tcp -m tcp --dport 3022 -m state --state NEW -j ACCEPT
+-A OUTPUT -o eth0 -p tcp -m tcp --dport 3023 -m state --state NEW -j ACCEPT
+-A OUTPUT -o eth0 -p tcp -m tcp --dport 3080 -m state --state NEW -j ACCEPT
+-A OUTPUT -o eth0 -p tcp -m tcp --dport 3025 -m state --state NEW -j ACCEPT
+
+# PocketCluster agent
+-A INPUT  -i eth0 -p udp -m udp --dport 5353 -m state --state NEW -j ACCEPT
+-A INPUT  -i eth0 -p udp -m udp --dport 10061 -m state --state NEW -j ACCEPT
+-A OUTPUT -o eth0 -p udp -m udp --dport 5353 -m state --state NEW -j ACCEPT
+-A OUTPUT -o eth0 -p udp -m udp --dport 10060 -m state --state NEW -j ACCEPT
+
+# PocketCluster repository
+-A OUTPUT -o eth0 -p tcp -m tcp --dport 5000 -m state --state NEW -j ACCEPT
+
+COMMIT
+EOM
 }
 
 function apt_clean() {
