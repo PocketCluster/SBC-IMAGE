@@ -410,6 +410,8 @@ EOM
 
     # disable IPV6
     cat <<EOM >>$R/etc/sysctl.conf
+
+
 ###################################################################
 # Disble IPv6 Support
 net.ipv6.conf.all.disable_ipv6 = 1
