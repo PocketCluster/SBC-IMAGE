@@ -284,9 +284,9 @@ EOM
 
     # Set up fstab
     cat <<EOM >$R/etc/fstab
-proc            /proc           proc    defaults          0       0
-/dev/mmcblk0p2  /               ${FS}   defaults,noatime  0       1
-/dev/mmcblk0p1  /boot/          vfat    defaults          0       2
+proc              /proc    proc     defaults            0    0
+/dev/mmcblk0p2    /        ${FS}    defaults,noatime    0    1
+/dev/mmcblk0p1    /boot    vfat     defaults            0    2
 EOM
 
     # udev rules
@@ -298,23 +298,79 @@ EOM
 }
 
 function setup_config_ops() {
+    ## --- AUTOPARTITION
     # place autopartitioner
     cp autopartition.sh $R/etc/
     chmod 755 $R/etc/autopartition.sh
     chroot $R chown root:root /etc/autopartition.sh
 
     # modify rc.local
-    cp rc.local $R/etc/
+    cat <<EOM >$R/etc/rc.local
+#!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+if [[ -f /etc/autopartition.sh ]]; then
+    /etc/autopartition.sh
+    rm /etc/autopartition.sh
+fi
+
+exit 0
+EOM
     chmod 755 $R/etc/rc.local
     chroot $R chown root:root /etc/rc.local
 
+    ## --- DHCP AGENTS
     # place dhcp client configuration
-    cp dhclient.conf $R/etc/dhcp/
+    cat <<EOM >$R/etc/dhcp/dhclient.conf
+# Configuration file for /sbin/dhclient.
+#
+# This is a sample configuration file for dhclient. See dhclient.conf's
+#   man page for more information about the syntax of this file
+#   and a more comprehensive list of the parameters understood by
+#   dhclient.
+#
+# Normally, if the DHCP server provides reasonable information and does
+#   not leave anything out (like the domain name, for example), then
+#   few changes must be made to this file, if any.
+#
+
+option rfc3442-classless-static-routes code 121 = array of unsigned integer 8;
+
+send host-name = gethostname();
+request subnet-mask, broadcast-address, time-offset, routers,
+    domain-name, domain-name-servers, domain-search, host-name,
+    dhcp6.name-servers, dhcp6.domain-search, dhcp6.fqdn, dhcp6.sntp-servers,
+    netbios-name-servers, netbios-scope, interface-mtu,
+    rfc3442-classless-static-routes, ntp-servers;
+
+#send dhcp-lease-time 3600;
+prepend domain-name-servers 127.0.0.1, 208.67.222.222, 208.67.220.220;
+require subnet-mask, domain-name-servers;
+timeout 300;
+EOM
+
     # setup dhcpagent script
-    cp dhcpagent $R/etc/dhcp/dhclient-exit-hooks.d/
+    cat <<EOM >$R/etc/dhcp/dhclient-exit-hooks.d/dhcpagent
+# Notifies DHCP event
+# Copyright 2017 PocketCluster.io
+
+/opt/pocket/bin/pocketd dhcpagent
+EOM
+
     # setup ownership
     chroot $R chown -R root:root /etc/dhcp/
 
+    ## --- PocketCluster Service
     # setup pocketd
     mkdir -p $R/opt/pocket/bin
     cp pocketd $R/opt/pocket/bin
@@ -322,11 +378,47 @@ function setup_config_ops() {
     chroot $R chown -R root:root /opt/pocket
 
     # setup pocket service
-    cp pocket.service $R/etc/systemd/system/ 
+    cat  <<EOM >$R/etc/systemd/system/pocket.service
+[Unit]
+Description=PocketCluster Node Agent
+After=network.target
+
+[Service]
+Type=simple
+PIDFile=/var/run/pocket.pid
+Restart=always
+ExecStart=/opt/pocket/bin/pocketd
+
+[Install]
+WantedBy=multi-user.target
+EOM
     chroot $R chown root:root /etc/systemd/system/pocket.service
     chroot $R systemctl daemon-reload
     chroot $R systemctl enable pocket
     chroot $R systemctl status pocket.service
+
+    ## --- Network Setup
+    # setup /etc/hosts
+    cat <<EOM >$R/etc/hosts
+127.0.0.1   localhost
+#::1        localhost ip6-localhost ip6-loopback
+#ff02::1    ip6-allnodes
+#ff02::2    ip6-allrouters
+
+127.0.1.1   pocket-node
+EOM
+
+    # disable IPV6
+    cat <<EOM >>$R/etc/sysctl.conf
+###################################################################
+# Disble IPv6 Support
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
+
+EOM
+
+    # setup iptables
 }
 
 function apt_clean() {

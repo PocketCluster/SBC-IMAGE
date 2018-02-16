@@ -1,4 +1,0 @@
-# Notifies DHCP event
-# Copyright 2017 PocketCluster.io
-
-/opt/pocket/bin/pocketd dhcpagent
