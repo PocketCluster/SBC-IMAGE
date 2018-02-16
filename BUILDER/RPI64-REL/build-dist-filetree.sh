@@ -61,12 +61,12 @@ function configure_network() {
     echo ${DIST_HOSTNAME} >$R/etc/hostname
     echo "nameserver 8.8.8.8" > $R/etc/resolv.conf
     cat <<EOM >$R/etc/hosts
-127.0.0.1       localhost
-# ::1             localhost ip6-localhost ip6-loopback
-# ff02::1         ip6-allnodes
-# ff02::2         ip6-allrouters
+127.0.0.1    localhost
+# ::1         localhost ip6-localhost ip6-loopback
+# ff02::1     ip6-allnodes
+# ff02::2     ip6-allrouters
 
-127.0.1.1       ${DIST_HOSTNAME}
+127.0.1.1    ${DIST_HOSTNAME}
 EOM
 
     mkdir -p $R/etc/network
@@ -401,16 +401,6 @@ EOM
     chroot $R systemctl status pocket.service
 
     ## --- Network Setup
-    # setup /etc/hosts
-    cat <<EOM >$R/etc/hosts
-127.0.0.1   localhost
-#::1        localhost ip6-localhost ip6-loopback
-#ff02::1    ip6-allnodes
-#ff02::2    ip6-allrouters
-
-127.0.1.1   pocket-node
-EOM
-
     # disable IPV6
     cat <<EOM >>$R/etc/sysctl.conf
 
