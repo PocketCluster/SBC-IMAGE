@@ -133,19 +133,19 @@ EOM
 # Install Ubuntu Essentials
 function ubuntu_essential() {
     # only the essentials
-    chroot $R apt-get -y install --no-install-suggests language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping iptables net-tools ntpdate ntp iptables-persistent tzdata dialog resolvconf parted
+    chroot $R apt-get -y --no-install-suggests install language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping iptables net-tools ntpdate ntp iptables-persistent tzdata dialog resolvconf parted
     # Config timezone, Keyboard, Console
     chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
     chroot $R dpkg-reconfigure --frontend=noninteractive debconf
 
     # system hang prevention
-    chroot $R apt-get -y install --no-install-suggests libpam-systemd dbus
+    chroot $R apt-get -y --no-install-suggests install libpam-systemd dbus
 
     return
 
     # (2018/02/16) these are unnecessary for headless machine
     # console & keyboard
-    chroot $R apt-get -y install --no-install-suggests console-common console-data console-setup keyboard-configuration
+    chroot $R apt-get -y --no-install-suggests install console-common console-data console-setup keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive keyboard-configuration
     chroot $R dpkg-reconfigure --frontend=noninteractive console-setup
 }
@@ -192,11 +192,11 @@ EOM
 
 function docker_setup() {
     # docker dependencies
-    chroot $R apt-get -y install --no-install-suggests adduser init-system-helpers kmod libc6 apparmor libapparmor1 libcap2 libltdl7 libsqlite3-0 libsystemd0 lvm2 liblvm2cmd2.02 libseccomp2 
+    chroot $R apt-get -y --no-install-suggests install adduser init-system-helpers kmod libc6 apparmor libapparmor1 libcap2 libltdl7 libsqlite3-0 libsystemd0 lvm2 liblvm2cmd2.02 libseccomp2
     # docker recommends
-    chroot $R apt-get -y install --no-install-suggests cgroupfs-mount cgroup-lite git xz-utils
+    chroot $R apt-get -y --no-install-suggests install cgroupfs-mount cgroup-lite git xz-utils
     # docker possible utility
-    chroot $R apt-get -y install --no-install-suggests apparmor-profiles apparmor-profiles-extra apparmor-utils bridge-utils
+    chroot $R apt-get -y --no-install-suggests install apparmor-profiles apparmor-profiles-extra apparmor-utils bridge-utils
 
     # install aufs-tools
     mkdir -p $R/tmp/
@@ -262,7 +262,7 @@ function setup_rpi64_specifics() {
     fi
 
     # Hardware - Create a fake HW clock and add rng-tools These are coming from official repo
-    chroot $R apt-get -y install fake-hwclock rng-tools
+    chroot $R apt-get -y --no-install-suggests install fake-hwclock rng-tools
     
     # Bootloader installation
     tar -xvzf ${PWD}/bootstrap-4.9.40.tar.gz --overwrite -C ${R}
@@ -415,14 +415,15 @@ net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
 EOM
 
+    return
+
+    # (2018/02/16) conflict with isc-dhcp-client
     # resolv.conf
     cat <<EOM >$R/etc/resolvconf/resolv.conf.d/base
 nameserver 127.0.0.1
 nameserver 208.67.222.222
 nameserver 208.67.220.220
 EOM
-
-    return
 
     # (2018/02/16) iptables-rules prevents hadoop from starting. we'll leave it for now
     # setup iptables
