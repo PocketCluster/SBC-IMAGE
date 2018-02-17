@@ -192,7 +192,7 @@ EOM
 
 function docker_setup() {
     # docker dependencies
-    chroot $R apt-get -y install --no-install-suggests adduser init-system-helpers libc6 apparmor libapparmor1 libcap2 libltdl7 libsqlite3-0 libsystemd0 lvm2 liblvm2cmd2.02 libseccomp2 
+    chroot $R apt-get -y install --no-install-suggests adduser init-system-helpers kmod libc6 apparmor libapparmor1 libcap2 libltdl7 libsqlite3-0 libsystemd0 lvm2 liblvm2cmd2.02 libseccomp2 
     # docker recommends
     chroot $R apt-get -y install --no-install-suggests cgroupfs-mount cgroup-lite git xz-utils
     # docker possible utility
