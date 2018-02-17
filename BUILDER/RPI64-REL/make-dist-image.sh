@@ -119,4 +119,4 @@ function make_tarball() {
 
 R=${DEVICE_R}
 make_rpi64_image ${FS_TYPE} 0
-make_tarball
+#make_tarball
