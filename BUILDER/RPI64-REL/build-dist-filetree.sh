@@ -354,14 +354,9 @@ option rfc3442-classless-static-routes code 121 = array of unsigned integer 8;
 
 send host-name = gethostname();
 request subnet-mask, broadcast-address, time-offset, routers,
-    domain-name, domain-name-servers, domain-search, host-name,
-    dhcp6.name-servers, dhcp6.domain-search, dhcp6.fqdn, dhcp6.sntp-servers,
-    netbios-name-servers, netbios-scope, interface-mtu,
-    rfc3442-classless-static-routes, ntp-servers;
+    interface-mtu, rfc3442-classless-static-routes, ntp-servers;
 
-#send dhcp-lease-time 3600;
-prepend domain-name-servers 127.0.0.1, 208.67.222.222, 208.67.220.220;
-require subnet-mask, domain-name-servers;
+require subnet-mask;
 timeout 300;
 EOM
 
@@ -415,15 +410,16 @@ net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
 EOM
 
-    return
-
-    # (2018/02/16) conflict with isc-dhcp-client
     # resolv.conf
     cat <<EOM >$R/etc/resolvconf/resolv.conf.d/base
 nameserver 127.0.0.1
 nameserver 208.67.222.222
 nameserver 208.67.220.220
 EOM
+
+
+    # --- following setups break network configurations --- 
+    return
 
     # (2018/02/16) iptables-rules prevents hadoop from starting. we'll leave it for now
     # setup iptables
@@ -475,6 +471,37 @@ EOM
 
 COMMIT
 EOM
+
+    # (2018/02/18) this dhclient setup conflict with resolvconf and rules over
+    # https://askubuntu.com/questions/157154/how-do-i-include-lines-in-resolv-conf-that-wont-get-lost-on-reboot
+    cat <<EOM >$R/etc/dhcp/dhclient.conf
+# Configuration file for /sbin/dhclient.
+#
+# This is a sample configuration file for dhclient. See dhclient.conf's
+#   man page for more information about the syntax of this file
+#   and a more comprehensive list of the parameters understood by
+#   dhclient.
+#
+# Normally, if the DHCP server provides reasonable information and does
+#   not leave anything out (like the domain name, for example), then
+#   few changes must be made to this file, if any.
+#
+
+option rfc3442-classless-static-routes code 121 = array of unsigned integer 8;
+
+send host-name = gethostname();
+request subnet-mask, broadcast-address, time-offset, routers,
+    domain-name, domain-name-servers, domain-search, host-name,
+    dhcp6.name-servers, dhcp6.domain-search, dhcp6.fqdn, dhcp6.sntp-servers,
+    netbios-name-servers, netbios-scope, interface-mtu,
+    rfc3442-classless-static-routes, ntp-servers;
+
+#send dhcp-lease-time 3600;
+prepend domain-name-servers 127.0.0.1, 208.67.222.222, 208.67.220.220;
+require subnet-mask, domain-name-servers;
+timeout 300;
+EOM
+
 }
 
 function apt_clean() {
