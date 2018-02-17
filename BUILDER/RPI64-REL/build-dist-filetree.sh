@@ -414,6 +414,14 @@ net.ipv6.conf.all.disable_ipv6 = 1
 net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
 EOM
+
+    # resolv.conf
+    cat <<EOM >$R/etc/resolvconf/resolv.conf.d/base
+    nameserver 127.0.0.1
+    nameserver 208.67.222.222
+    nameserver 208.67.220.220
+EOM
+
     return
 
     # (2018/02/16) iptables-rules prevents hadoop from starting. we'll leave it for now
