@@ -417,9 +417,9 @@ EOM
 
     # resolv.conf
     cat <<EOM >$R/etc/resolvconf/resolv.conf.d/base
-    nameserver 127.0.0.1
-    nameserver 208.67.222.222
-    nameserver 208.67.220.220
+nameserver 127.0.0.1
+nameserver 208.67.222.222
+nameserver 208.67.220.220
 EOM
 
     return
