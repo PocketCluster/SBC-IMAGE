@@ -249,6 +249,9 @@ function create_user() {
     chroot $R addgroup --gid 29999 ${DIST_USERGROUP}
     chroot $R adduser --gecos "PocketCluster (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
     chroot $R usermod -a -G sudo,docker -p ${PASSWD} ${DIST_USERNAME}
+
+    chroot $R apt-get -y install sudo
+    echo "pocket ALL=(ALL) NOPASSWD:ALL" > $R/etc/sudoers.d/pocket
 }
 
 function setup_rpi64_specifics() {
