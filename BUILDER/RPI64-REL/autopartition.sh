@@ -21,7 +21,7 @@ sync; sleep 1
 # Let kernel re-read partition table
 partprobe
 # wait for the partition to actually exist, timeout after about 5 seconds
-local timer=0
+timer=0
 while [ "$timer" -lt 5 ]; do
     timer=$((timer + 1))
     sync; sleep 1
