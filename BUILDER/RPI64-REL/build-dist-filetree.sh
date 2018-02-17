@@ -325,7 +325,7 @@ function setup_config_ops() {
 #
 # By default this script does nothing.
 
-if [[ -f /etc/autopartition.sh ]]; then
+if [ -f /etc/autopartition.sh ]; then
     /etc/autopartition.sh
     rm /etc/autopartition.sh
 fi
