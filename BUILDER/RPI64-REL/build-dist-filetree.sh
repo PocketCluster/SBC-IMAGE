@@ -66,7 +66,7 @@ function configure_network() {
 # ff02::1     ip6-allnodes
 # ff02::2     ip6-allrouters
 
-127.0.1.1    ${DIST_HOSTNAME}
+127.0.1.1    ${DIST_HOSTNAME} ${DIST_HOSTNAME}
 EOM
 
     mkdir -p $R/etc/network
@@ -410,16 +410,32 @@ net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
 EOM
 
+    # uninstall resolvconf : isc-dhcp-client conflict with resolvconf and rules over
+    chroot $R apt-get -y --purge resolvconf
+    (rm -rf $R/run/resolvconf || true)
+    (rm -rf $R/etc/resolvconf || true)
+    (rm -rf $R/etc/resolv.conf || true)
+
+    # setup immutable resolv.conf
+    cat <<EOM >$R/etc/resolv.conf
+domain localdomain
+search localdomain
+nameserver 127.0.0.1
+nameserver 208.67.222.222
+nameserver 208.67.220.220
+EOM
+    chattr +i $R/etc/resolv.conf
+
+
+    # --- following setups break network configurations --- 
+    return
+
     # resolv.conf
     cat <<EOM >$R/etc/resolvconf/resolv.conf.d/base
 nameserver 127.0.0.1
 nameserver 208.67.222.222
 nameserver 208.67.220.220
 EOM
-
-
-    # --- following setups break network configurations --- 
-    return
 
     # (2018/02/16) iptables-rules prevents hadoop from starting. we'll leave it for now
     # setup iptables
