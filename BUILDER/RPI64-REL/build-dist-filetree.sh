@@ -411,7 +411,7 @@ net.ipv6.conf.lo.disable_ipv6 = 1
 EOM
 
     # uninstall resolvconf : isc-dhcp-client conflict with resolvconf and rules over
-    chroot $R apt-get -y --purge resolvconf
+    chroot $R apt-get -y --purge remove resolvconf
     (rm -rf $R/run/resolvconf || true)
     (rm -rf $R/etc/resolvconf || true)
     (rm -rf $R/etc/resolv.conf || true)
