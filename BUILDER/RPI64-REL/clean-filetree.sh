@@ -14,6 +14,11 @@ if [ $(id -u) -ne 0 ]; then
     exit 1
 fi
 
+# change file attribute
+function reset_file_attrs() {
+    chattr -i $R/etc/resolv.conf
+}
+
 # Unmount host system
 function umount_system() {
     umount -l $R/sys
@@ -29,4 +34,5 @@ function clean_residue() {
     rm -rf ${BASEDIR}
 }
 
+reset_file_attrs
 clean_residue
