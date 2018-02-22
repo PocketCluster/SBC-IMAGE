@@ -30,9 +30,10 @@ function umount_system() {
 
 function clean_residue() {
     R="${DEVICE_R}"
+
+    reset_file_attrs
     umount_system
     rm -rf ${BASEDIR}
 }
 
-reset_file_attrs
 clean_residue
