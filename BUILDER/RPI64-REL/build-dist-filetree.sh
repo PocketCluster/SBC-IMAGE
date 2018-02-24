@@ -622,7 +622,7 @@ function single_stage_build() {
     docker_setup
 
     create_groups
-    create_user
+##  create_user
 
     setup_rpi64_specifics ${FS_TYPE}
     setup_config_ops
