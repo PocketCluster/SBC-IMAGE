@@ -28,6 +28,19 @@ Development file tree. This will include more packages. Base `Xenial` image is i
 
 Make devel image.  
 
+## CPUSET cgorup support
+
+This feature needs two things; kernel compile & cgroup lib. Current kernel config already includes it (`CONFIG_CPUSETS=y`) and `cmdline.txt` needs following to actiavte it. `cgroup_enable=cpuset cgroup_enable=memory swapaccount=1`.  
+
+We can activate more features from cmdline.txt. Take a look at the reference.
+
+> References
+
+- <https://github.com/hypriot/image-builder-rpi/blob/master/builder/chroot-script.sh#L142>
+- <http://elinux.org/RPI_BCM2708_Parameters>
+- <https://www.raspberrypi.org/documentation/configuration/cmdline-txt.md>
+- <https://askubuntu.com/questions/836469/install-cgconfig-in-ubuntu-16-04>
+
 ## SUSE image layout
 
 ```sh

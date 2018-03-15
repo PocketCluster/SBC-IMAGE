@@ -1,4 +1,8 @@
+# specify kernel image
 kernel=kernel8.img
+
+# arm64 mode
+arm_control=0x200
 
 # have a properly sized image
 disable_overscan=1
