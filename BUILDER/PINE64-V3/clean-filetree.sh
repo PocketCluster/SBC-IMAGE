@@ -14,6 +14,8 @@ if [ $(id -u) -ne 0 ]; then
     exit 1
 fi
 
+R="${DEVICE_R}"
+
 # Unmount host system
 function umount_system() {
     umount -l $R/sys
@@ -24,13 +26,10 @@ function umount_system() {
 }
 
 function clean_residue() {
-    R="${DEVICE_R}"
-    #mount_system
-    umount_system
-
     rm -rf ${BASE_R}
     rm -rf ${DEVICE_R}
     rm -rf ${PWD}/PINE64
 }
 
+umount_system
 clean_residue

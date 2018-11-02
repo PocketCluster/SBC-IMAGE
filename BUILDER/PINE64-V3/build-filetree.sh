@@ -36,7 +36,7 @@ if [ $(id -u) -ne 0 ]; then
 fi
 
 function unarchive_base_image() {
-    local BASE_IMAGE="${RELEASE}-base-${DEVICE_ARCH}.tar.gz"
+    local BASE_IMAGE="${RELEASE}-base-arm64.tar.gz"
     local TARGET="${1}"
     if [ ! -d "${TARGET}" ]; then
         mkdir -p "${TARGET}"
@@ -86,54 +86,41 @@ iface eth0 inet dhcp
 EOM
 }
 
+# Set up initial sources.list
 function apt_setup() {
-    # Tell DPKG not to install documents
-    if [ ! -d "${R}/etc/dpkg/dpkg.cfg.d/" ]; then
-        mkdir ${R}/etc/dpkg/dpkg.cfg.d/
-    fi
-    cat <<EOM >${R}/etc/dpkg/dpkg.cfg.d/01_nodoc
-path-exclude /usr/share/doc/*
-# we need to keep copyright files for legal reasons
-path-include /usr/share/doc/*/copyright
-path-exclude /usr/share/man/*
-path-exclude /usr/share/groff/*
-path-exclude /usr/share/info/*
-# lintian stuff is small, but really unnecessary
-path-exclude /usr/share/lintian/*
-path-exclude /usr/share/linda/*
-# don't autocomplete
-path-exclude /usr/share/zsh/vendor-completions/*
-path-exclude /usr/share/bash-completion/completions/*
-# don't install translation
-path-exclude /usr/share/locale/*
-path-include /usr/share/locale/en*
-EOM
-
     # tell APT not to install recommends & suggestion
     if [ ! -d "${R}/etc/apt/apt.conf.d/" ]; then
         mkdir ${R}/etc/apt/apt.conf.d/
     fi
     cat <<EOM >$R/etc/apt/sources.list
-deb http://ports.ubuntu.com/ ${RELEASE} main restricted universe
-deb http://ports.ubuntu.com/ ${RELEASE}-updates main restricted universe
-deb http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe
+deb http://ports.ubuntu.com/ ${RELEASE} main restricted universe multiverse
+deb-src http://ports.ubuntu.com/ ${RELEASE} main restricted universe multiverse
+
+deb http://ports.ubuntu.com/ ${RELEASE}-updates main restricted universe multiverse
+deb-src http://ports.ubuntu.com/ ${RELEASE}-updates main restricted universe multiverse
+
+deb http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe multiverse
+deb-src http://ports.ubuntu.com/ ${RELEASE}-security main restricted universe multiverse
+
+deb http://ports.ubuntu.com/ ${RELEASE}-backports main restricted universe multiverse
+deb-src http://ports.ubuntu.com/ ${RELEASE}-backports main restricted universe multiverse
 EOM
     cat <<EOM >${R}/etc/apt/apt.conf.d/50singleboards
 # Never use pdiffs, current implementation is very slow on low-powered devices
 Acquire::PDiffs "0";
 EOM
     cat <<EOM >${R}/etc/apt/apt.conf
-APT::Install-Recommends "false";
+# APT::Install-Recommends "false";
 APT::Install-Suggests "false";
 EOM
 
     chroot $R apt-get update
 }
 
-# Install Ubuntu Essentials
-function ubuntu_essential() {
+# Install Ubuntu Development
+function ubuntu_development() {
     # only the essentials
-    chroot $R apt-get -y install --no-install-suggests language-pack-en-base ca-certificates isc-dhcp-client udev netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata dialog resolvconf
+    chroot $R apt-get -y install --no-install-suggests language-pack-en-base software-properties-common isc-dhcp-client udev netbase ifupdown iproute iputils-ping net-tools ntpdate ntp tzdata dialog resolvconf sudo
     # Config timezone, Keyboard, Console
     chroot $R dpkg-reconfigure --frontend=noninteractive tzdata
     chroot $R dpkg-reconfigure --frontend=noninteractive debconf
@@ -145,6 +132,36 @@ function ubuntu_essential() {
 
     # system hang prevention
     chroot $R apt-get -y install --no-install-suggests libpam-systemd dbus
+}
+
+function configure_ssh() {
+    chroot $R apt-get -y install openssh-server
+    cat <<EOM >$R/etc/systemd/system/sshdgenkeys.service
+[Unit]
+Description=SSH key generation on first startup
+Before=ssh.service
+ConditionPathExists=|!/etc/ssh/ssh_host_key
+ConditionPathExists=|!/etc/ssh/ssh_host_key.pub
+ConditionPathExists=|!/etc/ssh/ssh_host_rsa_key
+ConditionPathExists=|!/etc/ssh/ssh_host_rsa_key.pub
+ConditionPathExists=|!/etc/ssh/ssh_host_dsa_key
+ConditionPathExists=|!/etc/ssh/ssh_host_dsa_key.pub
+ConditionPathExists=|!/etc/ssh/ssh_host_ecdsa_key
+ConditionPathExists=|!/etc/ssh/ssh_host_ecdsa_key.pub
+ConditionPathExists=|!/etc/ssh/ssh_host_ed25519_key
+ConditionPathExists=|!/etc/ssh/ssh_host_ed25519_key.pub
+
+[Service]
+ExecStart=/usr/bin/ssh-keygen -A
+Type=oneshot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=ssh.service
+EOM
+
+    mkdir -p $R/etc/systemd/system/ssh.service.wants
+    chroot $R ln -s /etc/systemd/system/sshdgenkeys.service /etc/systemd/system/ssh.service.wants
 }
 
 function generate_locale() {
@@ -235,37 +252,28 @@ function create_user() {
     chroot $R addgroup --gid 29999 ${DIST_USERGROUP}
     chroot $R adduser --gecos "PocketCluster (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 ${DIST_USERNAME}
     chroot $R usermod -a -G sudo,docker -p ${PASSWD} ${DIST_USERNAME}
+
+    echo "pocket ALL=(ALL) NOPASSWD:ALL" > $R/etc/sudoers.d/pocket
 }
 
 function setup_pine64_specifics() {
-    # /lib/firmware/3.10.104
-    mkdir -p $R/lib/firmware/       # make sure the path exists
-    rm -rf $R/lib/firmware/*        # clean it if it has some
-    tar -xzf ../CAPTURED-BOOT/PINE64/pine64-firmware-3.10.104-2017-01-30.tar.gz -C $R/
+    # modules
+    cat <<EOM >$R/etc/modules-load.d/pine64.conf
+dwmac-sun8i
+br_netfilter
+EOM
 
-    # /lib/modules/3.10.104
-    mkdir -p $R/lib/modules/        # make sure the path exists
-    rm -rf $R/lib/modules/*         # clean it if it has some
-    tar -xzf ../CAPTURED-BOOT/PINE64/pine64-modules-3.10.104-2017-01-30.tar.gz -C $R/
-    rm -rf ${R}/lib/modules/3.10.104/{source,build} || true
-    rm -rf ${R}/lib/modules/3.10.104/kernel/sound || true
-    rm -rf ${R}/lib/modules/3.10.104/kernel/net/{wireless,bluetooth} || true
-    rm -rf ${R}/lib/modules/3.10.104/kernel/drivers/{bluetooth,parport,ssb,w1} || true
-    rm -rf ${R}/lib/modules/3.10.104/kernel/drivers/media/i2c || true
-    echo "We need further shrink module directory"
-    
     # /etc/fstab for proper mouting
     cat <<EOM >$R/etc/fstab
 # <file system> <dir>   <type>  <options>           <dump>  <pass>
-/dev/mmcblk0p1  /boot   vfat    defaults            0       2
-/dev/mmcblk0p2  /   ext4    defaults,noatime        0       1
+/dev/mmcblk0p1  /boot   ext2    errors=remount-ro    0       1
+/dev/mmcblk0p2  /       ext4    defaults,noatime     0       1
 EOM
 }
 
 function apt_clean() {
-    chroot $R apt-get autoremove -y --purge
-    chroot $R apt-get clean -y
-    chroot $R apt-get autoclean -y 
+    chroot $R apt-get -y autoremove --purge
+    chroot $R apt-get clean
 }
 
 function clean_up() {
@@ -295,23 +303,6 @@ function clean_up() {
     # Removing those two buys 50 MB, for the price of apt-cache taking an extra two seconds for each lookup.
     rm -rf $R/var/cache/apt/pkgcache.bin || true
     rm -rf $R/var/cache/apt/srcpkgcache.bin || true
-
-    # remove docs
-    find ${R}/usr/share/doc -depth -type f ! -name copyright|xargs rm || true
-    find ${R}/usr/share/doc -empty|xargs rmdir || true
-    rm -rf ${R}/usr/share/man/* 
-    rm -rf ${R}/usr/share/groff/* 
-    rm -rf ${R}/usr/share/info/*
-    rm -rf ${R}/usr/share/lintian/* 
-    rm -rf ${R}/usr/share/linda/* 
-    rm -rf ${R}/var/cache/man/*
-    # remove auto-completion
-    rm -rf ${R}/usr/share/zsh/vendor-completions/*
-    rm -rf ${R}/usr/share/bash-completion/completions/*
-    # then remove existing translations
-    find ${R}/usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -rf
-    # make sure info directory is not broken for dep check
-    mkdir -p ${R}/usr/share/info
 
     # Clean up old firmware and modules
     rm -f $R/boot/.firmware_revision || true
@@ -358,7 +349,8 @@ function single_stage_build() {
 
     configure_network
     apt_setup
-    ubuntu_essential
+    ubuntu_development
+    configure_ssh
     generate_locale
     docker_setup
 
