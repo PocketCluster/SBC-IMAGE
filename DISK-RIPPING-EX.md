@@ -30,8 +30,9 @@ Disk identifier: 0x457797df
 Device                                     Boot  Start     End Sectors  Size Id Type
 pine64-plus-stretch-mainline-20171015.img1        2048  264191  262144  128M 83 Linux
 pine64-plus-stretch-mainline-20171015.img2      264192 8388607 8124416  3.9G 83 Linux
-
+```
 - - -
+## Operations
 
 ```sh
 dd if=./pine64-plus-stretch-mainline-20171015.img of="./PINE64-4.14.23-DIRTY.img" bs=512 count=264192
